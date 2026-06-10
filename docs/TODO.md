@@ -66,12 +66,12 @@ guesses.
   `/promote-lessons` run as prompt injection.
 - ✅ **Profile loads** - connect a git clone of the profile repo as a folder; its root
   `CLAUDE.md` auto-loads and `memory/` is readable via the file tools.
-- ⚠️ **The `cortex-git` binary CAN run in Cowork as a local MCP server** (Settings >
-  Developer, or a `.mcpb` via Connectors) - the earlier "remote-only" read was wrong.
-  Open, needs hands-on verification: **(a)** is `isLocalDevMcpEnabled` on for the
-  Origin-managed account, or has the admin disabled it? **(b)** does the bridged server
-  run on the **host** (host network -> can reach git hosts) or in the sandbox (git hosts
-  403'd)? **(c)** it's historically flaky (several open Cowork local-MCP bugs).
+- ✅ **The `cortex-git` binary CAN run in Cowork as a local MCP server** (Settings >
+  Developer, or a `.mcpb` via Connectors). **Resolved 2026-06-10:** (a) Settings >
+  Developer **is enabled** on Lucas's Origin-managed account; (b) local servers run
+  **host-side** (strong evidence: the Snyk extension holds its token in **env vars**, and
+  Chrome control drives the *local* browser) -> **host network, reaches git hosts**.
+  Only remaining caveat: reliability (open Cowork local-MCP bugs).
 
 **Viable Cowork path (no binary):**
 - Deliver the **skills** to Cowork (its plugin install / a `.plugin` bundle).
@@ -82,11 +82,11 @@ guesses.
   read-mostly consumer; memory edits it writes to the folder are pushed by the next
   host-side sync.
 
-**Autonomous git sync *inside* Cowork** now looks possible via the local-MCP path above
-(add `cortex-git` through Settings > Developer or a `.mcpb`), **if** the admin toggle
-allows it and the bridged server has host network. If that's blocked on the managed
-account, the fallbacks are (a) host-side sync (CLI / a scheduled `git pull`), or (b) a
-**hosted HTTP MCP** (Cortex-as-a-service) that fits the remote-MCP model.
+**Autonomous git sync *inside* Cowork is viable** (Lucas's account: Settings > Developer
+enabled, local servers run host-side with host network). Wire `cortex-git` in via
+Settings > Developer (or a `.mcpb`) and **pass the PAT as an env var** (the Snyk pattern)
+- which needs the env-credentials server change below. Fallbacks if it proves flaky:
+host-side sync (CLI / scheduled `git pull`), or a hosted HTTP MCP.
 
 **Surface matrix.**
 - **Claude Code CLI:** full (binary + skills + `~/.claude/CLAUDE.md`). Done.
@@ -98,10 +98,21 @@ account, the fallbacks are (a) host-side sync (CLI / a scheduled `git pull`), or
   `platform_overrides` + `user_config` for the PAT, if we ever pursue it.)
 - **Browser / mobile:** out (no local runtime).
 
-**Sub-tasks for Cowork:** (i) package/deliver the skills to Cowork (confirm whether a
-local `.plugin` can be side-loaded or it must go via the curated Directory); (ii) the
-git-clone-as-connected-folder profile flow + host-side sync (CLI or a scheduled
-`git pull`); (iii) *(optional, later)* a hosted HTTP MCP for in-Cowork sync.
+**Sub-tasks for Cowork (priority order):** (i) **server change - read creds from env**
+(`CORTEX_GIT_HOST` / `_USERNAME` / `_TOKEN`) so a local-MCP config can inject the PAT via
+env, Snyk-style - the key enabler for a clean Cowork wire-up *and* the `.mcpb`
+`user_config`; (ii) wire `cortex-git` into Cowork as a local MCP server (Settings >
+Developer -> Windows `.exe` + env vars) and connect a git-clone folder for the profile;
+(iii) deliver the skills to Cowork; (iv) *(optional)* a `.mcpb` for one-click install;
+(v) *(fallback only)* a hosted HTTP MCP.
+
+**Real template (Snyk's local MCP server, observed 2026-06-10):** a `.mcpb`-managed
+**stdio** server - `command` = the binary, `args: mcp -t stdio`, and **`env:
+SNYK_TOKEN=${user_config.snyk_token}`** with a `user_config.snyk_token` field, shown
+"running" host-side. Cortex maps 1:1: `command` = `cortex-git-server[.exe]` (stdio by
+default, no subcommand), `env: { CORTEX_GIT_TOKEN: ${user_config.token}, CORTEX_GIT_HOST:
+..., CORTEX_GIT_USERNAME: ... }`, `user_config.token` (`sensitive: true`). Confirms the
+env-creds server change is exactly the Snyk model.
 
 ## Publishing / install
 
