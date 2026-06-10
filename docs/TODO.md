@@ -2,20 +2,33 @@
 
 Open items, grouped by theme. Each becomes a branch + PR.
 
-## Publishing / install (current focus)
+## Setup / onboarding UX
 
-- [ ] **Binary distribution.** A freshly installed plugin has no compiled
-      `cortex-git-server` binary. A bundled launcher script fetches the correct
-      release binary for the host platform on first run into `${CLAUDE_PLUGIN_DATA}`,
-      verifying its SHA-256 against the release `checksums.txt` before running it.
-- [ ] **Release integrity.** Releases emit `checksums.txt`; optionally add cosign
-      signatures and verify them in the launcher.
-- [ ] **Marketplace.** Add `.claude-plugin/marketplace.json` so the plugin is
-      installable via `/plugin marketplace add` → `/plugin install`.
-- [ ] **Manifest polish.** Keep `plugin.json` `version` in sync with the released tag.
-- [ ] **Validate + test install.** `claude plugin validate`, then a local end-to-end
-      install from a marketplace through to a working sync round-trip.
-- [ ] *(Optional)* Submit to the `anthropics/claude-plugins-community` marketplace.
+- [ ] **Import an existing setup.** Detect an existing `CLAUDE.md` (`~/.claude`, the
+      Cowork Documents folder) during `/setup` and offer to import and adapt it into
+      the profile, instead of only the cold questionnaire. Biggest win for users who
+      already have a profile and persona.
+- [ ] **Deeper guided persona builder.** When a user wants a full character, branch
+      into a richer guided interview (name, background, personality, values, voice)
+      rather than the current handful of questions.
+- [ ] **Clean "no persona" path.** Make "just preferences, no character" an obvious
+      first-class choice in the persona section for the many users who will not want
+      a named persona.
+- [ ] **Memory path resolution on Claude Code CLI.** When `CLAUDE.md` is placed at
+      `~/.claude/CLAUDE.md`, the relative `memory/` reference should resolve to the
+      profile repo regardless of working directory. `/setup` and `/restore-profile`
+      should make the memory path explicit (or place a pointer).
+
+## Publishing / install
+
+- [x] Shipped in **v0.1.0**: binary launcher (fetch + SHA-256 verify into
+      `${CLAUDE_PLUGIN_DATA}`), `SessionStart` warm hook, `marketplace.json`,
+      `plugin.json` polish, the goreleaser release pipeline (`checksums.txt`), and a
+      verified end-to-end install + real-host sync test.
+- [ ] *(Optional)* cosign-sign release artifacts and verify the signature in the
+      launcher, on top of the existing SHA-256 check.
+- [ ] *(Optional)* Submit to the `anthropics/claude-plugins-community` marketplace
+      via `clau.de/plugin-directory-submission`.
 
 ## Enhancements (later)
 
@@ -42,5 +55,4 @@ Open items, grouped by theme. Each becomes a branch + PR.
 
 ## Docs
 
-- [ ] Finalise the install/setup steps in `README.md` and `docs/usage.md` once
-      marketplace publishing lands.
+- [x] Install/setup steps finalised in `README.md` and `docs/usage.md` (v0.1.0).
