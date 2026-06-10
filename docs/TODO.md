@@ -48,9 +48,17 @@ sandbox makes "download + cache + exec a native binary" unviable. Note that in
 Cowork the Documents folder is usually already synced (OneDrive / a GitHub
 connector), so git-based profile sync may be unnecessary there.
 
-Likely shape: a Cowork variant that (a) places `CLAUDE.md` + `memory/` in the
-connected Documents folder, (b) relies on that folder's own sync for portability
-(or a skill-driven sync), and (c) drops the native MCP binary on Cowork.
+**Goal:** make **Git the single source of truth** for the profile across ALL
+surfaces, **independent of OneDrive** - including Cowork (which today only gets
+`CLAUDE.md` because the connected Documents folder happens to be OneDrive-synced).
+
+Likely shape: the profile repo is the source of truth and each surface reads a local
+**git clone** of it. For Cowork, connect its workspace to a local clone of the
+profile repo (instead of the OneDrive Documents folder); keep that clone current with
+`git pull`/`push` - via the cortex-git plugin on the CLI, a Cowork skill that shells
+plain `git` if the sandbox allows it, or synced out-of-session. The native
+`cortex-git` MCP binary stays CLI-only; Cowork either reads a clone kept current
+elsewhere or runs `git` directly from a skill (needs git + a PAT in the sandbox).
 
 **Confirmed (2026-06-10, tested in Cowork):** Cowork has **no `/plugin` command** -
 the Claude Code CLI marketplace install path does not exist there. Any Cowork install
