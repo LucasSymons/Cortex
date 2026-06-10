@@ -32,85 +32,65 @@ Open items, grouped by theme. Each becomes a branch + PR.
 
 ## Cowork support
 
-Cortex targets **Claude Code CLI** today (plugin marketplace + local MCP binary +
-`SessionStart` hook + `~/.claude/CLAUDE.md`). Cowork runs inside the **Claude Desktop
-app**, which installs differently (no `/plugin`) but **does run local MCP servers** -
-so the `cortex-git` binary IS viable there. Design the Cowork install path around the
-Desktop app's mechanisms.
+Cortex targets **Claude Code CLI** today (binary + skills + `~/.claude/CLAUDE.md`).
+**Cowork** (the agentic mode in the Claude Desktop app) is a *different runtime* from
+both the CLI and the plain Desktop chat. The findings below are **ground truth observed
+from inside a live Cowork session (2026-06-10)** and supersede earlier screenshot-era
+guesses.
 
-**Surface support matrix.** Cortex runs wherever Claude can run a **local MCP server
-and read a local folder**: **Claude Code CLI** (done) and the **Claude Desktop app**
-(where Cowork runs - viable, see below). The **browser (`claude.ai`) and mobile have
-no local runtime**, so the native-binary + local-git-profile model does not apply
-there; supporting them would need a different remote approach (remote MCP server /
-connector / web-project instructions) and is out of scope.
+**How Cowork actually works (observed from inside):**
+- **Runtime:** a sandboxed **Ubuntu 22 VM**. Connected folders mount at
+  `/sessions/<id>/mnt/<folder>/` (session id changes - never hardcode). **Only connected
+  folders persist** across sessions; the rest of the sandbox is ephemeral.
+- **CLAUDE.md:** auto-loaded from the **root of each connected folder**, injected as a
+  `<system-reminder>`. Multiple connected folders each contribute their `CLAUDE.md`.
+- **Skills:** `SKILL.md` files (plugins land under `mnt/.remote-plugins/plugin_<id>/`);
+  invoking one is **prompt injection**, no subprocess. They work unchanged.
+- **MCP:** every connector is **remote `"type": "http"`** (e.g. `mcp.atlassian.com`).
+  **There are no local/stdio binary MCP servers in the Cowork agent runtime** - the
+  decisive constraint. (The local MCP servers + `.mcpb`/`.dxt` in Desktop *Settings >
+  Extensions* are the separate **Desktop chat** surface, not the Cowork agent.)
+- **Network:** the sandbox has no direct egress - all traffic goes via a host proxy with
+  a **host-controlled allowlist**. `github.com`/`gitlab.com` return **HTTP 403**; only
+  allowlisted MCP hosts work. So git-over-HTTPS from inside Cowork is blocked.
+- **Plugin install:** Cowork unpacks a `.plugin` bundle into `.remote-plugins/` (skills +
+  an optional remote-HTTP `.mcp.json`) - a **subset** of the CLI `.claude-plugin` format:
+  skills + remote MCP, **no binary launcher**.
 
-What carries over:
-- **Skills** (`/setup`, `/sync-profile`, ...) - same format, work on both surfaces.
-- **The profile** (`CLAUDE.md` + `memory/`) - placed where the app auto-loads it (the
-  global `.claude` rules space; see the loading model below).
+**What this means for Cortex in Cowork:**
+- ✅ **Skills work today, unchanged** - `/setup`, `/sync-profile`, `/restore-profile`,
+  `/promote-lessons` run as prompt injection.
+- ✅ **Profile loads** - connect a git clone of the profile repo as a folder; its root
+  `CLAUDE.md` auto-loads and `memory/` is readable via the file tools.
+- ❌ **The `cortex-git` MCP binary does NOT work in Cowork** - the agent runtime is
+  remote-HTTP-MCP-only, and the sandbox can't reach `github.com`/`gitlab.com` anyway.
 
-**Goal:** make **Git the single source of truth** for the profile across ALL
-surfaces, **independent of OneDrive** - including Cowork (which today only gets
-`CLAUDE.md` because the connected Documents folder happens to be OneDrive-synced).
+**Viable Cowork path (no binary):**
+- Deliver the **skills** to Cowork (its plugin install / a `.plugin` bundle).
+- Put the **profile** (CLAUDE.md + memory) in a **connected folder that is a git clone**
+  of the profile repo - Cowork reads it; OneDrive drops out.
+- **Sync happens host-side, not in Cowork:** keep that clone current with `git` from the
+  CLI Cortex or a host-side `git pull` (the sandbox can't reach git hosts). Cowork is a
+  read-mostly consumer; memory edits it writes to the folder are pushed by the next
+  host-side sync.
 
-**What the Desktop/Cowork app offers (confirmed from the app UI, 2026-06-10):**
-- **No `/plugin` command** - the CLI marketplace install path is absent in Cowork.
-- **Settings > Extensions:** install local extensions by dragging a **`.mcpb`/`.dxt`**
-  bundle (or "Browse extensions"). The shipped ones - Filesystem, Chrome control,
-  Snyk - are local MCP servers running on the machine.
-- **Settings > Developer > Local MCP servers ("Edit Config"):** add any local MCP
-  server by command + args (`claude_desktop_config.json`).
-- **Directory > Plugins:** a *curated* catalog (Your organization / Anthropic &
-  Partners); some bundle MCP servers. Curated, not "add any repo".
-- **Context loading (confirmed with Lucas, 2026-06-10):** the Desktop/Cowork app
-  **always auto-loads global rules from `~/.claude/CLAUDE.md`** (Windows
-  `C:\Users\<user>\.claude\CLAUDE.md`; the dir also carries `commands/`, `templates/`).
-  Cowork additionally has a **Settings > Cowork** instructions box (global free text -
-  can say "read file X at session start") and a **Cowork files** folder
-  (`Documents\Claude`, for artifacts + scheduled tasks). Connected **working folders**
-  are readable during a task but are NOT auto-loaded as steering unless an instruction
-  points at them. **So the default Cortex placement on Desktop/Cowork is the global
-  `.claude\CLAUDE.md`** (Git-synced, always loads - the exact analog of the CLI's
-  `~/.claude/CLAUDE.md`), no custom instruction needed.
+**To get autonomous git sync *inside* Cowork** (optional, bigger): either (a) stand up a
+**hosted HTTP MCP endpoint** for the git ops (Cortex-as-a-service) so it fits Cowork's
+remote-MCP model and can be allowlisted, or (b) wait for Cowork to add local stdio MCP
+support. (a) is a real architecture change - defer unless there's demand.
 
-So the native binary is fine on Desktop. The two real gaps are: (a) no `/plugin`
-install, and (b) the launcher `bin/cortex-git-launch.sh` is POSIX-only - it will not
-run on native Windows, so Desktop needs a `.cmd`/`.ps1` launcher (or the bundled
-`.exe`).
+**Surface matrix.**
+- **Claude Code CLI:** full (binary + skills + `~/.claude/CLAUDE.md`). Done.
+- **Cowork agent:** skills + connected-folder profile, host-side git sync; no binary.
+- **Desktop chat (non-Cowork):** *could* run the binary via `.mcpb` / Local MCP servers -
+  a separate surface, lower priority. (`.mcpb` v0.3 supports `server.type: "binary"` +
+  `platform_overrides` + `user_config` for the PAT, if we ever pursue it.)
+- **Browser / mobile:** out (no local runtime).
 
-**Install paths for Cortex on Desktop/Cowork:**
-1. **Manual, works today:** add `cortex-git` via Developer > Local MCP servers >
-   Edit Config (point at the Windows binary), and connect a **git clone of the profile
-   repo** as a working folder so `CLAUDE.md` + `memory/` come from Git, not OneDrive.
-2. **Distributable (the product path):** ship Cortex as an **MCP Bundle (`.mcpb`,
-   formerly `.dxt`)** - a zip of `manifest.json` + the server, drag-drop installed from
-   Settings > Extensions. The format **natively supports a compiled-binary server**
-   (`server.type: "binary"`), so we bundle the Go binary directly - **no fetch/verify
-   launcher needed** (the `.mcpb` is the verified distribution). Build with the `mcpb`
-   CLI (`mcpb init` / `mcpb pack`). Concrete design (manifest spec v0.3):
-   - `server.type: "binary"`, `mcp_config.command` = the bundled binary via
-     `${__dirname}`; Windows gets `.exe` auto-appended.
-   - **`platform_overrides`** (`win32` / `darwin` / `linux`) carry per-OS binaries in
-     one bundle. Arch (amd64 vs arm64) is NOT a manifest dimension - use a macOS
-     universal build + a tiny arch-selecting wrapper, or per-arch bundles.
-   - **`user_config`** declares `host` / `username` / `token` (token `sensitive: true`),
-     injected via `${user_config.token}` as env (e.g. `CORTEX_GIT_TOKEN`) - no separate
-     `set_credentials` step.
-3. *(Org-wide, later)* publish to the org's Directory > Plugins if relevant.
-
-Sub-tasks: **(i)** small server change - read creds from env (`CORTEX_GIT_*`) so
-`user_config` can inject the PAT (today creds come only from the keychain/file store);
-**(ii)** the `.mcpb` manifest + per-platform binary packaging (goreleaser can build a
-macOS universal binary + the bundle); **(iii)** a Windows launcher (`.cmd`/`.ps1`) -
-needed only for the *manual* `claude_desktop_config.json` path, not the `.mcpb`;
-**(iv)** the git-clone-as-working-folder flow for profile + memory.
-
-Still to verify in a real Cowork session (Lucas):
-- Does `CLAUDE.md` auto-load from a connected **non-OneDrive** working folder (a git
-  clone)? (High confidence yes - it's just a folder - but confirm.)
-- Does Cowork read the `memory/` files, or only `CLAUDE.md` at the folder root?
-- Can a Cowork skill shell `git` for in-app sync (else sync the clone out-of-session)?
+**Sub-tasks for Cowork:** (i) package/deliver the skills to Cowork (confirm whether a
+local `.plugin` can be side-loaded or it must go via the curated Directory); (ii) the
+git-clone-as-connected-folder profile flow + host-side sync (CLI or a scheduled
+`git pull`); (iii) *(optional, later)* a hosted HTTP MCP for in-Cowork sync.
 
 ## Publishing / install
 
