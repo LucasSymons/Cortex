@@ -14,14 +14,25 @@ Cortex is a Claude Code / Cowork plugin that keeps your AI persona, memory, and 
 
 ## Installation
 
-> **Not finalised yet.** Cortex is not yet published to a plugin marketplace,
-> and the bundled MCP server binary distribution is still in progress
-> (see [docs/TODO.md](docs/TODO.md)). For now, run it from a local checkout —
-> see [Running from a local checkout](CONTRIBUTING.md#running-from-a-local-checkout)
-> in CONTRIBUTING for the build and `--plugin-dir` steps.
->
-> Marketplace install instructions (`/plugin marketplace add ...` →
-> `/plugin install ...`) will be added here once publishing lands.
+Cortex installs as a Claude Code plugin. The plugin bundles a small launcher
+that, on first run, downloads the prebuilt `cortex-git-server` binary for your
+platform from the matching GitHub release and verifies its SHA-256 before
+running it — nothing to compile.
+
+**Prerequisites:** `curl`, `tar`, and `sha256sum` (or `shasum`) on your `PATH`.
+On Windows, run Claude Code under WSL.
+
+```shell
+/plugin marketplace add LucasSymons/Cortex
+/plugin install cortex@cortex
+```
+
+On the next session the binary is fetched into the plugin's data directory and
+cached for subsequent runs, then run `/setup` to build your profile.
+
+Developers running from a local checkout can build the server with `make build`;
+the launcher prefers a local build when present. See
+[Running from a local checkout](CONTRIBUTING.md#running-from-a-local-checkout).
 
 ## Quick start
 

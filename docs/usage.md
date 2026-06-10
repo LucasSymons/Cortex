@@ -4,11 +4,16 @@ Cortex keeps your AI profile (persona, instructions, memory) in a Git repo so it
 follows you across devices and AI tools. This guide covers day-to-day use and
 troubleshooting.
 
-> **Installation is not finalised yet.** Cortex isn't published to a plugin
-> marketplace, and the bundled MCP server binary distribution is still being
-> worked out (see [TODO.md](TODO.md)). To run it now, see
-> [Running from a local checkout](../CONTRIBUTING.md#running-from-a-local-checkout)
-> in CONTRIBUTING. Install steps will be added here once publishing lands.
+> **Install:** add the marketplace, then install the plugin:
+>
+> ```shell
+> /plugin marketplace add LucasSymons/Cortex
+> /plugin install cortex@cortex
+> ```
+>
+> The plugin downloads its prebuilt MCP-server binary on first run (needs `curl`,
+> `tar`, and `sha256sum`/`shasum`; on Windows, run under WSL). See the
+> [README](../README.md#installation) for details.
 
 ## Concepts
 
