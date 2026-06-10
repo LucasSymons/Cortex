@@ -30,6 +30,37 @@ Open items, grouped by theme. Each becomes a branch + PR.
       profile repo regardless of working directory. `/setup` and `/restore-profile`
       should make the memory path explicit (or place a pointer).
 
+## Cowork support
+
+Cortex today targets **Claude Code CLI only** - plugin marketplace + a local native
+MCP binary + a `SessionStart` hook + `~/.claude/CLAUDE.md`. **Cowork is a different,
+more sandboxed runtime and this architecture does not port directly.** Design a
+Cowork install path.
+
+What carries over:
+- **Skills** (`/setup`, `/sync-profile`, ...) - same format, work on both surfaces.
+- **The profile** (`CLAUDE.md` + `memory/`) - Cowork auto-loads `CLAUDE.md` from the
+  connected Documents folder root, so the profile can live there.
+
+The problem child is the **`cortex-git` MCP binary**: Cowork's plugin model is
+skill/connector-oriented (not the CLI `.mcp.json` + hooks model), and the session
+sandbox makes "download + cache + exec a native binary" unviable. Note that in
+Cowork the Documents folder is usually already synced (OneDrive / a GitHub
+connector), so git-based profile sync may be unnecessary there.
+
+Likely shape: a Cowork variant that (a) places `CLAUDE.md` + `memory/` in the
+connected Documents folder, (b) relies on that folder's own sync for portability
+(or a skill-driven sync), and (c) drops the native MCP binary on Cowork.
+
+Open questions to verify in a real Cowork session (do this while setting Cowork up):
+- Can a Cowork plugin/connector declare or reach an MCP server (local or remote), or
+  is it skills-only?
+- Is `${CLAUDE_PLUGIN_DATA}` (or any plugin storage) persistent across Cowork
+  conversations?
+- Does Cowork read a `memory/` dir, or only `CLAUDE.md`? How is memory meant to work?
+- Does the Cowork sandbox have `git` + outbound network + a writable Documents folder
+  for a skill-driven sync?
+
 ## Publishing / install
 
 - [x] Shipped in **v0.1.0**: binary launcher (fetch + SHA-256 verify into

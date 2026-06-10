@@ -34,6 +34,10 @@ Developers running from a local checkout can build the server with `make build`;
 the launcher prefers a local build when present. See
 [Running from a local checkout](CONTRIBUTING.md#running-from-a-local-checkout).
 
+> **Surface:** these steps are for **Claude Code CLI**. Cowork (the desktop/web app)
+> uses a different runtime - no local MCP binary, and `CLAUDE.md` loads from the
+> connected Documents folder. Cowork support is on the [roadmap](docs/TODO.md#cowork-support).
+
 ## Quick start
 
 ```
