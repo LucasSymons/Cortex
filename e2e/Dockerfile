@@ -3,7 +3,7 @@
 # mount would reference the daemon's filesystem, not the job's. The build
 # context (this dir) is shipped to the daemon, so COPY sees the certs either way.
 # Throwaway, localhost/CI only - never reuse this image or cert.
-FROM gitea/gitea:1.22
+FROM gitea/gitea:1.26
 COPY certs/ /certs/
 # /certs must be traversable (0755) and the files readable by the unprivileged
 # gitea user; COPY alone can leave the dir without its execute bit.
