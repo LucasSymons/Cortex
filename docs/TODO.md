@@ -6,10 +6,16 @@ GitHub Actions CI, Dependabot, and the goreleaser release pipeline are all green
 The plugin has been verified end-to-end, including a real first-run setup against a
 private GitLab profile repo.
 
-**Next up:** a small **v0.1.1** carrying the two skill-only Setup / onboarding UX
-wins below (import an existing `CLAUDE.md`; a clean "no persona" path) - no Go
-change, so low risk. The community-marketplace submission is queued (manual, via
-`clau.de/plugin-directory-submission`).
+**Next up:**
+- **v0.1.1** (skill-only): the two Setup / onboarding UX wins below - import an existing
+  `CLAUDE.md`; a clean "no persona" path. No Go change, low risk.
+- **Cowork support (investigated + viable):** Cortex can run fully in the Claude Desktop /
+  Cowork app - `cortex-git` works as a local MCP server (the Snyk model). Next build
+  (**v0.2.0**) = a small **env-credentials server change** (read `CORTEX_GIT_TOKEN` /
+  `_HOST` / `_USERNAME` from env) -> manual Cowork wire-up -> an optional `.mcpb`
+  one-click bundle. See `## Cowork support`.
+- **Community marketplace** submission still queued (manual,
+  `clau.de/plugin-directory-submission`).
 
 Open items, grouped by theme. Each becomes a branch + PR.
 
@@ -103,7 +109,9 @@ host-side sync (CLI / scheduled `git pull`), or a hosted HTTP MCP.
 env, Snyk-style - the key enabler for a clean Cowork wire-up *and* the `.mcpb`
 `user_config`; (ii) wire `cortex-git` into Cowork as a local MCP server (Settings >
 Developer -> Windows `.exe` + env vars) and connect a git-clone folder for the profile;
-(iii) deliver the skills to Cowork; (iv) *(optional)* a `.mcpb` for one-click install;
+(iii) deliver the skills to Cowork; (iv) *(optional)* a `.mcpb` for one-click install - **pack a clean staging dir
+(`manifest.json` + `icon.png` + the single binary only), NOT the repo** (Snyk's shipped
+`.mcpb` bundled `.circleci` / `.vscode` / `node_modules` - don't repeat that);
 (v) *(fallback only)* a hosted HTTP MCP.
 
 **Real template (Snyk's local MCP server, observed 2026-06-10):** a `.mcpb`-managed
