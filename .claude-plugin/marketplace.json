@@ -1,0 +1,15 @@
+{
+  "name": "cortex",
+  "description": "Cortex: portable AI profile, persona, and memory, synced across devices and AI platforms over Git.",
+  "owner": {
+    "name": "Lucas Symons",
+    "url": "https://github.com/LucasSymons"
+  },
+  "plugins": [
+    {
+      "name": "cortex",
+      "source": { "source": "github", "repo": "LucasSymons/Cortex" },
+      "description": "Sync your AI profile, persona, and memory across devices and AI platforms via Git."
+    }
+  ]
+}

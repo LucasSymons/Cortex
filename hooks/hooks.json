@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/cortex-git-launch.sh\" --prefetch"
+          }
+        ]
+      }
+    ]
+  }
+}
