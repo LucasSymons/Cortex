@@ -1,4 +1,15 @@
-# Cortex — roadmap
+# Cortex - roadmap
+
+**Status (2026-06-10):** v0.1.0 is released and publicly installable
+(`/plugin marketplace add LucasSymons/Cortex` -> `/plugin install cortex@cortex`).
+GitHub Actions CI, Dependabot, and the goreleaser release pipeline are all green.
+The plugin has been verified end-to-end, including a real first-run setup against a
+private GitLab profile repo.
+
+**Next up:** a small **v0.1.1** carrying the two skill-only Setup / onboarding UX
+wins below (import an existing `CLAUDE.md`; a clean "no persona" path) - no Go
+change, so low risk. The community-marketplace submission is queued (manual, via
+`clau.de/plugin-directory-submission`).
 
 Open items, grouped by theme. Each becomes a branch + PR.
 
@@ -34,11 +45,11 @@ Open items, grouped by theme. Each becomes a branch + PR.
 
 - [ ] **Passphrase mode** for the encrypted-file credential fallback, for real at-rest
       protection on headless boxes (currently machine-bound obfuscation).
-- [ ] **Real `git_diff`** — a content-level change preview (the stub was removed as it
+- [ ] **Real `git_diff`** - a content-level change preview (the stub was removed as it
       duplicated `git_status`).
 - [ ] **Better pull conflict strategy** than last-write-wins (`Force: true`).
 - [ ] **`golangci-lint`** config + CI job for stricter static analysis beyond `go vet`.
-- [ ] **`CORTEX_CONFIG_DIR` / force-file-backend override** — pin the encrypted-file
+- [ ] **`CORTEX_CONFIG_DIR` / force-file-backend override** - pin the encrypted-file
       backend at a given dir regardless of whether an OS keychain is present. Enables
       deterministic, fully isolated E2E on every platform and a clean headless override.
 
