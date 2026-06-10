@@ -46,10 +46,14 @@ guesses.
   `<system-reminder>`. Multiple connected folders each contribute their `CLAUDE.md`.
 - **Skills:** `SKILL.md` files (plugins land under `mnt/.remote-plugins/plugin_<id>/`);
   invoking one is **prompt injection**, no subprocess. They work unchanged.
-- **MCP:** every connector is **remote `"type": "http"`** (e.g. `mcp.atlassian.com`).
-  **There are no local/stdio binary MCP servers in the Cowork agent runtime** - the
-  decisive constraint. (The local MCP servers + `.mcpb`/`.dxt` in Desktop *Settings >
-  Extensions* are the separate **Desktop chat** surface, not the Cowork agent.)
+- **MCP - two paths:** the *plugin* connectors are **remote `"type": "http"`** (e.g.
+  `mcp.atlassian.com`) - which is all Cowork-Bree saw, because her machine had no local
+  servers configured. But the canonical doc (`claude.com/docs/cowork/3p/extensions`)
+  confirms Cowork **also supports local MCP servers**: user-added via **Settings >
+  Developer** (gated by the `isLocalDevMcpEnabled` admin toggle) or as a **`.mcpb`**
+  installed from the **Connectors** page. Chrome control is exactly this - a local
+  server driving local Chrome. **So a local binary MCP server CAN run for a Cowork
+  session** (bridged from `claude_desktop_config.json`).
 - **Network:** the sandbox has no direct egress - all traffic goes via a host proxy with
   a **host-controlled allowlist**. `github.com`/`gitlab.com` return **HTTP 403**; only
   allowlisted MCP hosts work. So git-over-HTTPS from inside Cowork is blocked.
@@ -62,8 +66,12 @@ guesses.
   `/promote-lessons` run as prompt injection.
 - ✅ **Profile loads** - connect a git clone of the profile repo as a folder; its root
   `CLAUDE.md` auto-loads and `memory/` is readable via the file tools.
-- ❌ **The `cortex-git` MCP binary does NOT work in Cowork** - the agent runtime is
-  remote-HTTP-MCP-only, and the sandbox can't reach `github.com`/`gitlab.com` anyway.
+- ⚠️ **The `cortex-git` binary CAN run in Cowork as a local MCP server** (Settings >
+  Developer, or a `.mcpb` via Connectors) - the earlier "remote-only" read was wrong.
+  Open, needs hands-on verification: **(a)** is `isLocalDevMcpEnabled` on for the
+  Origin-managed account, or has the admin disabled it? **(b)** does the bridged server
+  run on the **host** (host network -> can reach git hosts) or in the sandbox (git hosts
+  403'd)? **(c)** it's historically flaky (several open Cowork local-MCP bugs).
 
 **Viable Cowork path (no binary):**
 - Deliver the **skills** to Cowork (its plugin install / a `.plugin` bundle).
@@ -74,14 +82,17 @@ guesses.
   read-mostly consumer; memory edits it writes to the folder are pushed by the next
   host-side sync.
 
-**To get autonomous git sync *inside* Cowork** (optional, bigger): either (a) stand up a
-**hosted HTTP MCP endpoint** for the git ops (Cortex-as-a-service) so it fits Cowork's
-remote-MCP model and can be allowlisted, or (b) wait for Cowork to add local stdio MCP
-support. (a) is a real architecture change - defer unless there's demand.
+**Autonomous git sync *inside* Cowork** now looks possible via the local-MCP path above
+(add `cortex-git` through Settings > Developer or a `.mcpb`), **if** the admin toggle
+allows it and the bridged server has host network. If that's blocked on the managed
+account, the fallbacks are (a) host-side sync (CLI / a scheduled `git pull`), or (b) a
+**hosted HTTP MCP** (Cortex-as-a-service) that fits the remote-MCP model.
 
 **Surface matrix.**
 - **Claude Code CLI:** full (binary + skills + `~/.claude/CLAUDE.md`). Done.
-- **Cowork agent:** skills + connected-folder profile, host-side git sync; no binary.
+- **Cowork agent:** skills + connected-folder profile; the binary is runnable as a
+  local MCP server (Settings > Developer / `.mcpb`) subject to the admin toggle +
+  verification, else host-side sync.
 - **Desktop chat (non-Cowork):** *could* run the binary via `.mcpb` / Local MCP servers -
   a separate surface, lower priority. (`.mcpb` v0.3 supports `server.type: "binary"` +
   `platform_overrides` + `user_config` for the PAT, if we ever pursue it.)
