@@ -52,6 +52,13 @@ Likely shape: a Cowork variant that (a) places `CLAUDE.md` + `memory/` in the
 connected Documents folder, (b) relies on that folder's own sync for portability
 (or a skill-driven sync), and (c) drops the native MCP binary on Cowork.
 
+**Confirmed (2026-06-10, tested in Cowork):** Cowork has **no `/plugin` command** -
+the Claude Code CLI marketplace install path does not exist there. Any Cowork install
+is via the Settings UI (skills / connectors), so the CLI-plugin format (MCP binary +
+hooks) is not installable in Cowork as-is. However, Cowork already auto-loads
+`CLAUDE.md` from the connected Documents folder, so the *profile* (persona + prefs)
+works there with no install - the open question is the *skills* and *sync*.
+
 Open questions to verify in a real Cowork session (do this while setting Cowork up):
 - Can a Cowork plugin/connector declare or reach an MCP server (local or remote), or
   is it skills-only?
