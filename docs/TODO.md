@@ -47,8 +47,8 @@ connector / web-project instructions) and is out of scope.
 
 What carries over:
 - **Skills** (`/setup`, `/sync-profile`, ...) - same format, work on both surfaces.
-- **The profile** (`CLAUDE.md` + `memory/`) - Cowork auto-loads `CLAUDE.md` from the
-  connected Documents folder root, so the profile can live there.
+- **The profile** (`CLAUDE.md` + `memory/`) - placed where the app auto-loads it (the
+  global `.claude` rules space; see the loading model below).
 
 **Goal:** make **Git the single source of truth** for the profile across ALL
 surfaces, **independent of OneDrive** - including Cowork (which today only gets
@@ -63,7 +63,16 @@ surfaces, **independent of OneDrive** - including Cowork (which today only gets
   server by command + args (`claude_desktop_config.json`).
 - **Directory > Plugins:** a *curated* catalog (Your organization / Anthropic &
   Partners); some bundle MCP servers. Curated, not "add any repo".
-- **Working folders:** Cowork reads a connected folder, incl. `CLAUDE.md` at its root.
+- **Context loading (confirmed with Lucas, 2026-06-10):** the Desktop/Cowork app
+  **always auto-loads global rules from `~/.claude/CLAUDE.md`** (Windows
+  `C:\Users\<user>\.claude\CLAUDE.md`; the dir also carries `commands/`, `templates/`).
+  Cowork additionally has a **Settings > Cowork** instructions box (global free text -
+  can say "read file X at session start") and a **Cowork files** folder
+  (`Documents\Claude`, for artifacts + scheduled tasks). Connected **working folders**
+  are readable during a task but are NOT auto-loaded as steering unless an instruction
+  points at them. **So the default Cortex placement on Desktop/Cowork is the global
+  `.claude\CLAUDE.md`** (Git-synced, always loads - the exact analog of the CLI's
+  `~/.claude/CLAUDE.md`), no custom instruction needed.
 
 So the native binary is fine on Desktop. The two real gaps are: (a) no `/plugin`
 install, and (b) the launcher `bin/cortex-git-launch.sh` is POSIX-only - it will not
