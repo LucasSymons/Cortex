@@ -74,21 +74,34 @@ run on native Windows, so Desktop needs a `.cmd`/`.ps1` launcher (or the bundled
 1. **Manual, works today:** add `cortex-git` via Developer > Local MCP servers >
    Edit Config (point at the Windows binary), and connect a **git clone of the profile
    repo** as a working folder so `CLAUDE.md` + `memory/` come from Git, not OneDrive.
-2. **Distributable (the product path):** package Cortex as a **`.dxt`/`.mcpb` Desktop
-   Extension** bundling the MCP server, so users drag-drop install it from Settings >
-   Extensions - the Cowork equivalent of the CLI marketplace plugin. Needs a DXT
-   manifest, a Windows launcher, and the same fetch+verify model.
+2. **Distributable (the product path):** ship Cortex as an **MCP Bundle (`.mcpb`,
+   formerly `.dxt`)** - a zip of `manifest.json` + the server, drag-drop installed from
+   Settings > Extensions. The format **natively supports a compiled-binary server**
+   (`server.type: "binary"`), so we bundle the Go binary directly - **no fetch/verify
+   launcher needed** (the `.mcpb` is the verified distribution). Build with the `mcpb`
+   CLI (`mcpb init` / `mcpb pack`). Concrete design (manifest spec v0.3):
+   - `server.type: "binary"`, `mcp_config.command` = the bundled binary via
+     `${__dirname}`; Windows gets `.exe` auto-appended.
+   - **`platform_overrides`** (`win32` / `darwin` / `linux`) carry per-OS binaries in
+     one bundle. Arch (amd64 vs arm64) is NOT a manifest dimension - use a macOS
+     universal build + a tiny arch-selecting wrapper, or per-arch bundles.
+   - **`user_config`** declares `host` / `username` / `token` (token `sensitive: true`),
+     injected via `${user_config.token}` as env (e.g. `CORTEX_GIT_TOKEN`) - no separate
+     `set_credentials` step.
 3. *(Org-wide, later)* publish to the org's Directory > Plugins if relevant.
 
-Sub-tasks: **(i)** Windows launcher (`.cmd`/`.ps1`) so fetch+verify works on native
-Windows; **(ii)** the `.dxt`/`.mcpb` package + manifest; **(iii)** the
-git-clone-as-working-folder flow for profile + memory.
+Sub-tasks: **(i)** small server change - read creds from env (`CORTEX_GIT_*`) so
+`user_config` can inject the PAT (today creds come only from the keychain/file store);
+**(ii)** the `.mcpb` manifest + per-platform binary packaging (goreleaser can build a
+macOS universal binary + the bundle); **(iii)** a Windows launcher (`.cmd`/`.ps1`) -
+needed only for the *manual* `claude_desktop_config.json` path, not the `.mcpb`;
+**(iv)** the git-clone-as-working-folder flow for profile + memory.
 
-Still to verify in a real Cowork session:
+Still to verify in a real Cowork session (Lucas):
 - Does `CLAUDE.md` auto-load from a connected **non-OneDrive** working folder (a git
-  clone)?
-- Exact `.dxt`/`.mcpb` manifest format and how it declares/bundles the MCP server.
-- Can a Cowork skill shell `git` for in-app sync, and where would a PAT live?
+  clone)? (High confidence yes - it's just a folder - but confirm.)
+- Does Cowork read the `memory/` files, or only `CLAUDE.md` at the folder root?
+- Can a Cowork skill shell `git` for in-app sync (else sync the clone out-of-session)?
 
 ## Publishing / install
 
