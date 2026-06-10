@@ -112,7 +112,16 @@ SNYK_TOKEN=${user_config.snyk_token}`** with a `user_config.snyk_token` field, s
 "running" host-side. Cortex maps 1:1: `command` = `cortex-git-server[.exe]` (stdio by
 default, no subcommand), `env: { CORTEX_GIT_TOKEN: ${user_config.token}, CORTEX_GIT_HOST:
 ..., CORTEX_GIT_USERNAME: ... }`, `user_config.token` (`sensitive: true`). Confirms the
-env-creds server change is exactly the Snyk model.
+env-creds server change is exactly the Snyk model. **Real `manifest.json` files read
+2026-06-10** from the packaged-app path
+`%LOCALAPPDATA%\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude\Claude Extensions\<ext>\manifest.json`
+(MSIX redirect, not plain `%APPDATA%`). Confirmed schema: `manifest_version: "0.3"`,
+`server` (`type`/`entry_point`/`mcp_config`), `user_config` (sensitive secrets),
+`tools[]` (+ `tools_generated`), `prompts[]`, `compatibility.platforms`, `keywords`,
+`license`, `icon`. Snyk/Filesystem are `type: "node"` (one entry point); **Cortex is
+`type: "binary"`, so it needs `platform_overrides` per OS (darwin/linux/win32) - or
+per-platform `.mcpb` bundles - with arch (amd64/arm64) via a macOS universal build or a
+wrapper. Add a `tools[]` block for the 8 `cortex-git` tools.
 
 ## Publishing / install
 
