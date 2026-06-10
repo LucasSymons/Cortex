@@ -1,0 +1,43 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write # goreleaser creates the GitHub release and uploads assets
+
+jobs:
+  # Gate the release on a green end-to-end sync against real HTTPS Gitea.
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.4"
+          cache-dependency-path: mcp/git-server/go.sum
+      - name: e2e (Gitea over HTTPS)
+        run: make e2e
+
+  release:
+    needs: e2e
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # goreleaser needs full history + tags for the changelog
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.4"
+          cache-dependency-path: mcp/git-server/go.sum
+      - uses: goreleaser/goreleaser-action@v6
+        with:
+          version: "~> v2"
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Build release binaries with the patched stdlib regardless of the Go
+          # the runner ships, matching the version CI validates against.
+          GOTOOLCHAIN: go1.26.4

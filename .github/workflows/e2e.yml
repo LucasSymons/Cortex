@@ -1,0 +1,23 @@
+name: E2E (manual)
+
+# Containerised end-to-end test: stands up Gitea over HTTPS and drives the real
+# cortex-git binary through the full sync lifecycle (see e2e/). It is the
+# heaviest check and pulls images from Docker Hub, so it is run on demand here
+# and automatically (blocking) on release tags (see release.yml).
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.4"
+          cache-dependency-path: mcp/git-server/go.sum
+      - name: e2e (Gitea over HTTPS)
+        run: make e2e
