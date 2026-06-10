@@ -1,0 +1,64 @@
+pre-commit:
+  parallel: true
+  commands:
+    gofmt:
+      glob: "mcp/git-server/**/*.go"
+      run: gofmt -l {staged_files}
+      fail_text: "Run 'make fmt' in mcp/git-server to fix formatting"
+
+    govet:
+      glob: "mcp/git-server/**/*.go"
+      run: cd mcp/git-server && go vet ./...
+
+    gitleaks:
+      run: gitleaks protect --staged --redact
+      fail_text: "Potential secret detected - check your staged files"
+
+    trailing-whitespace:
+      glob: "{*,**/*}.{go,md,yaml,yml,json}"
+      run: grep -rn " $" {staged_files} && exit 1 || exit 0
+      fail_text: "Trailing whitespace found"
+
+    end-of-file:
+      glob: "{*,**/*}.{go,md,yaml,yml,json}"
+      run: |
+        rc=0
+        for f in {staged_files}; do
+          [ -s "$f" ] || continue
+          if [ -n "$(tail -c1 "$f")" ]; then
+            echo "No newline at end of file: $f"
+            rc=1
+          fi
+        done
+        exit $rc
+      fail_text: "File must end with a newline"
+
+    line-endings:
+      glob: "{*,**/*}.{go,md,yaml,yml,json}"
+      run: |
+        cr=$(printf '\r')
+        if grep -lU "$cr" {staged_files} 2>/dev/null; then
+          exit 1
+        fi
+        exit 0
+      fail_text: "CR/CRLF line endings found - convert to LF"
+
+    check-yaml:
+      glob: "{*,**/*}.{yaml,yml}"
+      run: python3 -c 'import sys, yaml; [list(yaml.safe_load_all(open(f, encoding="utf-8"))) for f in sys.argv[1:]]' {staged_files}
+      fail_text: "Invalid YAML (the check needs python3 with PyYAML)"
+
+    check-json:
+      glob: "{*,**/*}.json"
+      run: |
+        for f in {staged_files}; do
+          python3 -m json.tool "$f" > /dev/null || exit 1
+        done
+        exit 0
+      fail_text: "Invalid JSON"
+
+commit-msg:
+  commands:
+    commitizen:
+      run: cz check --commit-msg-file {1}
+      fail_text: "Commit message must follow Conventional Commits format: type(scope): description"

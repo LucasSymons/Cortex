@@ -1,0 +1,30 @@
+# Cortex profile repo - never commit secrets or credentials.
+# git_commit_push stages all non-ignored files, so this list is the
+# last line of defence against syncing sensitive material.
+
+# Credentials and keys
+*.env
+*.pem
+*.key
+*.pfx
+*.p12
+*secret*
+*credential*
+*token*
+
+# Infrastructure state (may embed secrets)
+*.tfstate
+*.tfstate.backup
+.terraform/
+
+# Cloud config
+.aws/
+.azure/
+.gcloud/
+
+# OS cruft
+.DS_Store
+Thumbs.db
+
+# Local-only overrides
+*.local

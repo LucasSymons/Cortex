@@ -1,0 +1,131 @@
+---
+name: setup
+description: First-run setup for Cortex. Runs a guided questionnaire to build a personalised CLAUDE.md and memory structure, then initialises the Git profile repo.
+---
+
+# Cortex first-run setup
+
+Welcome to Cortex. This skill guides you through setting up your portable AI profile.
+
+Work through each section below, asking one section at a time. Be conversational - don't dump all questions at once. Confirm answers before moving on.
+
+---
+
+## Section 1 - Identity
+
+Ask:
+- Full name
+- Role / job title
+- Organisation
+- Timezone (IANA name, e.g. `Europe/London`, `America/New_York`, `Australia/Sydney`)
+- Primary work email
+
+---
+
+## Section 2 - Tech stack
+
+Ask (allow multiple answers):
+- Primary programming languages
+- Infrastructure as Code tools (Terraform, CDK, Pulumi, etc.)
+- Cloud platforms (AWS, Azure, GCP)
+- Source control and CI/CD tools
+- Collaboration tools (Jira, Confluence, Teams, Slack, etc.)
+
+---
+
+## Section 3 - AI persona
+
+Ask:
+- Do you want a named persona? (a character who responds consistently across sessions)
+  - If yes: what name? What personality traits? (e.g. direct, warm, sarcastic, formal)
+  - How much backstory depth? (minimal / moderate / full character)
+- Preferred tone: formal / balanced / casual
+- Do you want occasional humour and wit, or strictly professional?
+
+---
+
+## Section 4 - Working style
+
+Ask:
+- Preferred explanation depth: concise (you're an experienced engineer) / detailed
+- Should code always be production-ready by default, or ask first?
+- Preferred language/naming conventions (British English, American English, etc.)
+- Any formatting preferences? (e.g. avoid bullet points, avoid em-dashes)
+- What should the AI always stop and ask before doing? (e.g. destructive operations, sending messages)
+
+---
+
+## Section 5 - Security rules
+
+Ask:
+- What counts as sensitive data in your work? (e.g. customer data, credentials, internal system names)
+- Should the AI flag if it detects PII in loaded content?
+- Escalation contacts for security incidents (names and roles)
+- Any compliance requirements to bake in? (GDPR, Privacy Act, SOC2, etc.)
+
+---
+
+## Section 6 - Memory system
+
+Ask:
+- Enable the memory system? (strongly recommended - yes/no)
+- If yes: confirm default file names (active.md, systems.md, people.md, lessons.md) or customise
+- Should the AI proactively suggest saving lessons and decisions?
+- Should lessons from projects be promoted to the top-level memory automatically on sync?
+
+---
+
+## Section 7 - Git configuration
+
+Ask:
+- Git host: GitHub / GitLab / Azure DevOps / Gitea / other
+- Profile repo name (default: cortex-profile)
+- Repo visibility: private (strongly recommended) / public
+- Git username
+- Personal Access Token
+
+Minimum PAT scopes by host:
+- GitHub: `repo` (full control of private repositories)
+- GitLab: `write_repository`
+- Azure DevOps: `Code: Read & Write`
+
+Store the PAT using `set_credentials` - never write it to a file.
+
+---
+
+## After collecting all answers
+
+Decide the local profile repo path first (default: `~/cortex-profile`). All generated files go *into that directory*; `git_init` commits whatever is there.
+
+1. Generate a personalised `CLAUDE.md` (written to `[local_path]/CLAUDE.md`). Include:
+   - Persona section (if requested)
+   - Personal context (role, stack, timezone)
+   - Security rules
+   - Working style preferences
+   - Memory system configuration
+   - Cortex configuration block (repo path, remote, host)
+   - Session handoff instructions that include running sync-profile
+
+2. Generate the memory file structure under `[local_path]/memory/`:
+   - `README.md` - conventions and trigger list
+   - `active.md`, `systems.md`, `people.md`, `lessons.md` - empty templates with headers
+
+3. Generate platform adapters under `[local_path]/adapters/`:
+   - `generic.md` - plain text version of the profile for non-Claude tools
+
+4. Write a `.gitignore` into `[local_path]` covering credentials and secrets (`*.env`, `*.pem`, `*.key`, `*secret*`, `*credential*`, `*token*`, `*.tfstate`, etc.). This is the profile repo's last line of defence, since `git_init`/`git_commit_push` stage all non-ignored files. Use `profile-template/.gitignore` as the source.
+
+5. **Create the empty remote repo.** go-git cannot push into a repo that doesn't exist yet, and cannot clone an empty one, so the remote must be created first. Walk the user through it:
+   - In their host's web UI (GitHub/GitLab/Azure DevOps/...), create a new **private**, **empty** repository (no README, no .gitignore, no licence - it must be truly empty) named as chosen in Section 7.
+   - Copy the HTTPS clone URL (e.g. `https://gitlab.com/username/cortex-profile.git`).
+   - This manual step is intentional - Cortex does not call host APIs (see design doc). It takes a few seconds and you can guide them through it.
+
+6. Use `set_credentials` with the `host` (parsed from the URL), `username`, and `token` to store the PAT. Confirm with `get_auth_status`.
+
+7. Use `git_init` with `local_path`, `remote_url`, and the message `cortex: initial profile setup`. This initialises the repo (default branch `main`), adds the remote, commits the generated files, and pushes.
+
+8. Copy `CLAUDE.md` from `[local_path]` to the correct platform path so the harness loads it:
+   - Cowork: `~/Documents/CLAUDE.md`
+   - Claude Code CLI: `~/.claude/CLAUDE.md`
+
+9. Report: "Cortex is set up. Your profile is live at [repo_url] and CLAUDE.md is in place at [path]. Future sessions will start with your full context."

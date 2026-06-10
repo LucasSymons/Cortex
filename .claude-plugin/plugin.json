@@ -1,0 +1,11 @@
+{
+  "name": "cortex",
+  "description": "Sync your AI profile, persona, and memory across devices and AI platforms via Git. Build knowledge once, use it everywhere.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Lucas Symons"
+  },
+  "homepage": "https://github.com/LucasSymons/Cortex",
+  "repository": "https://github.com/LucasSymons/Cortex",
+  "license": "MIT"
+}

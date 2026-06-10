@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "cortex-git": {
+      "command": "${CLAUDE_PLUGIN_ROOT}/mcp/git-server/bin/cortex-git-server",
+      "args": [],
+      "env": {}
+    }
+  }
+}

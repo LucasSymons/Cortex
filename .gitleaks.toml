@@ -1,0 +1,26 @@
+# Gitleaks configuration for the Cortex repo.
+#
+# Auto-discovered by `gitleaks detect --source .` (the CI gitleaks job) and by
+# the local lefthook `gitleaks protect` hook.
+#
+# It extends the upstream default ruleset (so all standard detections stay
+# active) and adds a *narrowly scoped* allowlist for the secret-scanner's own
+# test fixtures. Those tests embed deliberately fake, secret-shaped strings -
+# the AWS documentation example key, throwaway PATs, a dummy JWT - to prove the
+# in-server content scan detects them. Without this allowlist, CI gitleaks would
+# flag our own test data and fail the pipeline.
+#
+# The allowlist is restricted to these specific test files by path, so a real
+# secret committed anywhere else in the tree is still caught.
+
+title = "Cortex gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Intentional fake secrets in the secret-scanner test fixtures"
+paths = [
+  '''mcp/git-server/internal/secretscan/secretscan_test\.go''',
+  '''mcp/git-server/internal/git/git_test\.go''',
+]

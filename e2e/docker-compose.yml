@@ -1,0 +1,39 @@
+# Disposable Gitea instance for the cortex E2E suite. Builds a derived image
+# (see Dockerfile) that bakes in the self-signed cert from ./certs, so it works
+# under docker-in-docker where a bind mount would not. Run gen-certs.sh first -
+# run.sh does. No data volume is mounted, so `docker compose down -v` leaves
+# nothing behind.
+services:
+  gitea:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      USER_UID: "1000"
+      USER_GID: "1000"
+      GITEA__server__PROTOCOL: https
+      GITEA__server__HTTP_PORT: "3000"
+      GITEA__server__ROOT_URL: https://localhost:3443/
+      GITEA__server__DOMAIN: localhost
+      GITEA__server__CERT_FILE: /certs/server.crt
+      GITEA__server__KEY_FILE: /certs/server.key
+      GITEA__server__DISABLE_SSH: "true"
+      GITEA__security__INSTALL_LOCK: "true"
+      GITEA__service__DISABLE_REGISTRATION: "true"
+      GITEA__database__DB_TYPE: sqlite3
+      GITEA__log__LEVEL: warn
+    ports:
+      - "3443:3000"
+    healthcheck:
+      test: ["CMD", "wget", "--no-check-certificate", "-qO-", "https://localhost:3000/api/healthz"]
+      interval: 3s
+      timeout: 5s
+      retries: 40
+      start_period: 5s
+
+# A fixed network name so a sibling-container CI job (host-socket runner) can join
+# it by name and reach Gitea at gitea:3000. Locally this is just the default
+# network and is irrelevant (the test reaches Gitea via the published port).
+networks:
+  default:
+    name: cortex-e2e-net

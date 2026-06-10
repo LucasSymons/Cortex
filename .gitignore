@@ -1,0 +1,43 @@
+# Binaries
+mcp/git-server/bin/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Go build artefacts
+mcp/git-server/vendor/
+
+# CI GOPATH cache (GOPATH=$CI_PROJECT_DIR/.go); keep it out of the working tree
+# so goreleaser does not see the repo as dirty during a release.
+.go/
+
+# Secrets - never commit these
+*.env
+*.pem
+*.key
+*.pfx
+*secret*
+*credential*
+*.tfstate
+*.tfstate.backup
+.terraform/
+.aws/
+
+# ...but the patterns above are for secret *files*. The in-server secret
+# scanner's source legitimately has "secret" in its path - keep it tracked.
+!mcp/git-server/internal/secretscan/
+!mcp/git-server/internal/secretscan/**
+
+# Local overrides
+*.local
+.claude/
+.DS_Store
+Thumbs.db
+
+# Test output
+*.test
+coverage.out
+
+# E2E: regenerated self-signed certs for the local Gitea instance
+e2e/certs/

@@ -1,0 +1,76 @@
+version: 2
+
+project_name: cortex
+
+before:
+  hooks:
+    # Global before hooks are plain strings (no cmd/dir form). go.mod is in the
+    # module subdir, so use `go -C` to run tidy there rather than at the root.
+    - go -C mcp/git-server mod tidy
+
+builds:
+  - id: cortex-git-server
+    main: ./cmd/server
+    dir: mcp/git-server
+    binary: cortex-git-server
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+
+archives:
+  - id: default
+    name_template: "cortex-git-server_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    files:
+      - README.md
+      - LICENSE
+      - THIRD_PARTY_LICENSES.md
+
+checksum:
+  name_template: "checksums.txt"
+
+changelog:
+  sort: asc
+  # `use` selects the changelog data source (git/github/gitlab/gitea); there is
+  # no "conventional" source. Conventional-commit grouping is done by `groups`
+  # below. `git` reads commit subjects from the local log - no API needed.
+  use: git
+  groups:
+    - title: Features
+      regexp: "^feat"
+      order: 0
+    - title: Bug fixes
+      regexp: "^fix"
+      order: 1
+    - title: Other
+      order: 999
+  filters:
+    exclude:
+      - "^chore"
+      - "^docs"
+      - "^style"
+
+release:
+  github:
+    owner: LucasSymons
+    name: Cortex
+  name_template: "v{{ .Version }}"
+  draft: false
+  prerelease: auto

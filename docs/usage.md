@@ -1,0 +1,112 @@
+# Using Cortex
+
+Cortex keeps your AI profile (persona, instructions, memory) in a Git repo so it
+follows you across devices and AI tools. This guide covers day-to-day use and
+troubleshooting.
+
+> **Installation is not finalised yet.** Cortex isn't published to a plugin
+> marketplace, and the bundled MCP server binary distribution is still being
+> worked out (see [TODO.md](TODO.md)). To run it now, see
+> [Running from a local checkout](../CONTRIBUTING.md#running-from-a-local-checkout)
+> in CONTRIBUTING. Install steps will be added here once publishing lands.
+
+## Concepts
+
+- **Profile repo** - a private Git repo holding your `CLAUDE.md`, `memory/`, and
+  `adapters/`. The source of truth.
+- **Credential store** - your Git PAT, kept in the OS keychain or an encrypted
+  file. See [SECURITY.md](../SECURITY.md).
+- **Skills** - the commands you run: `/setup`, `/sync-profile`,
+  `/restore-profile`, `/promote-lessons`.
+
+## First-run setup (`/setup`)
+
+`/setup` runs a guided questionnaire, generates your profile, and pushes it.
+Because Cortex doesn't create remote repos for you, there's one manual step:
+
+1. Answer the questionnaire (identity, stack, persona, rules, Git host).
+2. **Create an empty private repo** in your host's web UI (GitHub/GitLab/Azure
+   DevOps). It must be *truly empty* - no README, no .gitignore, no licence.
+   Copy the HTTPS clone URL.
+3. Cortex stores your PAT (`set_credentials`), then initialises and pushes your
+   generated profile to that repo (`git_init`).
+4. Your `CLAUDE.md` is placed where the harness loads it
+   (`~/.claude/CLAUDE.md` for Claude Code CLI, `~/Documents/CLAUDE.md` for Cowork).
+
+Why the manual repo step? See the
+[design note on first-run repo creation](design.md).
+
+## Day to day (`/sync-profile`)
+
+Run `/sync-profile` (or let it run on session handoff) to commit and push any
+changed memory files. It will:
+
+1. Check what changed.
+2. Refuse to commit anything that looks like a secret (safety gate).
+3. Commit with a generated message and push.
+
+## New device (`/restore-profile`)
+
+On a new machine, run `/restore-profile`. You'll provide your repo URL, Git
+username, and PAT; Cortex stores the PAT, clones the repo, and places `CLAUDE.md`
+in the right location for the platform.
+
+## Promoting lessons (`/promote-lessons`)
+
+Lifts project-level lessons worth keeping into your top-level memory, so they're
+available in every future session. Runs on sync or on demand.
+
+---
+
+## Troubleshooting
+
+### `no credentials found for <host> - run set_credentials first`
+
+No PAT is stored for that host. Run `get_auth_status <host>` to confirm (it also
+tells you which backend is active), then store one via `set_credentials` or
+re-run `/restore-profile`.
+
+### Credentials won't save on WSL / headless Linux
+
+On WSL2, containers, or headless Linux there's usually no OS keychain (no Secret
+Service / `org.freedesktop.secrets`). Cortex automatically falls back to an
+**encrypted file** at `~/.config/cortex/credentials.enc` - so this should "just
+work". `get_auth_status` will report `backend: file`. If you'd rather use a real
+keychain, run a desktop session with gnome-keyring/KWallet unlocked, and Cortex
+will prefer it (`backend: keychain`). See [SECURITY.md](../SECURITY.md) for the
+fallback's trade-offs.
+
+### Clone fails on a brand-new repo
+
+You cannot **clone** an empty repo (go-git limitation). First-run setup uses
+`git_init` (initialise locally and push) instead - make sure you ran `/setup`,
+not a manual clone, for a new profile.
+
+### Push rejected / remote has diverged
+
+Another device pushed since your last sync. Run `git_pull` then retry the sync.
+Note `git_pull` is **last-write-wins** - it force-updates your local branch and
+can overwrite local divergence, so check you're not discarding unsynced local
+changes first.
+
+### Which backend is storing my token, and where?
+
+`get_auth_status <host>` reports `backend: keychain` or `backend: file`. The file
+backend lives at `${XDG_CONFIG_HOME:-~/.config}/cortex/credentials.enc` (mode
+`0600`, encrypted).
+
+### A secret got blocked from syncing
+
+That's the safety gate doing its job. Move the secret out of the profile repo,
+or add it to the repo's `.gitignore`, then re-run `/sync-profile`.
+
+### A sync, clone, or pull is taking too long
+
+Network git operations (`git_clone`, `git_commit_push`, `git_pull`, and the
+push inside `git_init`) are bounded by a timeout - **2 minutes by default** - so
+a stalled remote or wedged connection can't hang a session indefinitely. They
+also abort immediately if you cancel the tool call. If you hit the limit on a
+genuinely large first clone over a slow link, raise it by setting
+`CORTEX_GIT_TIMEOUT` to a Go duration (e.g. `CORTEX_GIT_TIMEOUT=5m` or `90s`) in
+the MCP server's environment; an unset or invalid value uses the 2-minute
+default.

@@ -1,0 +1,282 @@
+package main
+
+import (
+	"context"
+	"errors"
+	"flag"
+	"fmt"
+	"log"
+	"os"
+	"time"
+
+	"github.com/mark3labs/mcp-go/mcp"
+	"github.com/mark3labs/mcp-go/server"
+
+	igit "github.com/LucasSymons/Cortex/mcp/git-server/internal/git"
+	"github.com/LucasSymons/Cortex/mcp/git-server/internal/keychain"
+)
+
+const serverName = "cortex-git"
+
+// Build metadata, injected at release time via -ldflags -X (see
+// .goreleaser.yaml). The defaults apply to local and dev builds.
+var (
+	version = "dev"
+	commit  = "none"
+	date    = "unknown"
+)
+
+func main() {
+	showVersion := flag.Bool("version", false, "print version information and exit")
+	flag.Parse()
+	if *showVersion {
+		fmt.Printf("%s %s (commit %s, built %s)\n", serverName, version, commit, date)
+		return
+	}
+
+	s := server.NewMCPServer(serverName, version)
+
+	// Register tools
+	registerTools(s)
+
+	log.Printf("cortex-git MCP server v%s starting", version)
+	if err := server.ServeStdio(s); err != nil {
+		fmt.Fprintf(os.Stderr, "server error: %v\n", err)
+		os.Exit(1)
+	}
+}
+
+func registerTools(s *server.MCPServer) {
+	// git_status - list changed files in the profile repo
+	s.AddTool(mcp.NewTool("git_status",
+		mcp.WithDescription("List changed files in the Cortex profile repo"),
+		mcp.WithString("repo_path", mcp.Required(), mcp.Description("Absolute path to the local profile repo")),
+	), gitStatusHandler)
+
+	// git_commit_push - commit all changes and push
+	s.AddTool(mcp.NewTool("git_commit_push",
+		mcp.WithDescription("Commit all changed files and push to the remote"),
+		mcp.WithString("repo_path", mcp.Required(), mcp.Description("Absolute path to the local profile repo")),
+		mcp.WithString("message", mcp.Required(), mcp.Description("Commit message")),
+	), gitCommitPushHandler)
+
+	// git_pull - pull latest from remote (last-write-wins)
+	s.AddTool(mcp.NewTool("git_pull",
+		mcp.WithDescription("Pull latest changes from the remote, force-updating the local branch (last-write-wins)"),
+		mcp.WithString("repo_path", mcp.Required(), mcp.Description("Absolute path to the local profile repo")),
+	), gitPullHandler)
+
+	// git_clone - clone a remote repo to a local path
+	s.AddTool(mcp.NewTool("git_clone",
+		mcp.WithDescription("Clone the Cortex profile repo to a local path"),
+		mcp.WithString("remote_url", mcp.Required(), mcp.Description("HTTPS remote URL of the profile repo")),
+		mcp.WithString("local_path", mcp.Required(), mcp.Description("Local path to clone into")),
+	), gitCloneHandler)
+
+	// git_init - initialise a new profile repo and push to an empty remote
+	s.AddTool(mcp.NewTool("git_init",
+		mcp.WithDescription("Initialise a new profile repo locally, add the remote, commit the files already in local_path, and push. Use for first-run setup against a freshly created EMPTY remote repo (go-git cannot clone an empty remote). Write the profile files into local_path before calling."),
+		mcp.WithString("local_path", mcp.Required(), mcp.Description("Local path containing the profile files to commit")),
+		mcp.WithString("remote_url", mcp.Required(), mcp.Description("HTTPS remote URL of the pre-created empty repo")),
+		mcp.WithString("message", mcp.Required(), mcp.Description("Initial commit message")),
+	), gitInitHandler)
+
+	// get_auth_status - check if credentials are configured
+	s.AddTool(mcp.NewTool("get_auth_status",
+		mcp.WithDescription("Check whether a PAT is stored for the given host, and report the active credential backend"),
+		mcp.WithString("host", mcp.Required(), mcp.Description("Git host (e.g. gitlab.com, github.com)")),
+	), getAuthStatusHandler)
+
+	// set_credentials - store a PAT in the credential store
+	s.AddTool(mcp.NewTool("set_credentials",
+		mcp.WithDescription("Store a Personal Access Token for the given host (OS keychain, or encrypted-file fallback on headless platforms)"),
+		mcp.WithString("host", mcp.Required(), mcp.Description("Git host (e.g. gitlab.com, github.com)")),
+		mcp.WithString("username", mcp.Required(), mcp.Description("Git username")),
+		mcp.WithString("token", mcp.Required(), mcp.Description("Personal Access Token (write access to repo)")),
+	), setCredentialsHandler)
+
+	// delete_credentials - remove a stored PAT (e.g. to rotate a token)
+	s.AddTool(mcp.NewTool("delete_credentials",
+		mcp.WithDescription("Remove the stored PAT for the given host, e.g. to rotate a token. Succeeds even if none was stored."),
+		mcp.WithString("host", mcp.Required(), mcp.Description("Git host (e.g. gitlab.com, github.com)")),
+	), deleteCredentialsHandler)
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+// defaultGitTimeout bounds any single git network operation (clone, push, pull,
+// and the fetch inside init). This is the one place to tune the limit: every
+// network handler derives its per-operation deadline from gitOpContext. It is
+// generous on purpose so a first clone/init of a large profile over a slow link
+// does not trip it, while still stopping a wedged socket from hanging a tool
+// call indefinitely. Override at runtime with CORTEX_GIT_TIMEOUT.
+const defaultGitTimeout = 2 * time.Minute
+
+// gitOpTimeout returns the configured git network timeout: CORTEX_GIT_TIMEOUT if
+// it parses as a positive Go duration (e.g. "5m", "90s"), otherwise
+// defaultGitTimeout. An unparseable or non-positive value is ignored with a note
+// on stderr rather than failing the operation.
+func gitOpTimeout() time.Duration {
+	if v := os.Getenv("CORTEX_GIT_TIMEOUT"); v != "" {
+		if d, err := time.ParseDuration(v); err == nil && d > 0 {
+			return d
+		}
+		fmt.Fprintf(os.Stderr, "cortex-git: ignoring invalid CORTEX_GIT_TIMEOUT %q; using default %s\n", v, defaultGitTimeout)
+	}
+	return defaultGitTimeout
+}
+
+// gitOpContext derives a per-operation context from the request context, bounded
+// by gitOpTimeout. The caller must call the returned cancel func when the
+// operation completes (defer cancel()). It composes with the request context's
+// own cancellation - whichever fires first aborts the git operation.
+func gitOpContext(ctx context.Context) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(ctx, gitOpTimeout())
+}
+
+// stringArg returns the named string argument, or "" if absent. Required
+// arguments are enforced by the tool schema before a handler runs.
+func stringArg(req mcp.CallToolRequest, name string) string {
+	v, _ := req.Params.Arguments[name].(string)
+	return v
+}
+
+// resolveCreds looks up stored credentials for host. If none are found it
+// returns a ready-to-return MCP error result; callers return it as-is. A
+// backend failure (locked keyring, decryption error) is surfaced verbatim
+// rather than being misreported as a missing PAT.
+func resolveCreds(host string) (username, token string, errResult *mcp.CallToolResult) {
+	username, token, err := keychain.GetCredentials(host)
+	if err != nil {
+		if errors.Is(err, keychain.ErrNotFound) {
+			return "", "", mcp.NewToolResultError(
+				fmt.Sprintf("no credentials found for %s - run set_credentials first", host))
+		}
+		return "", "", mcp.NewToolResultError(
+			fmt.Sprintf("could not read credentials for %s: %v", host, err))
+	}
+	return username, token, nil
+}
+
+// ─── Handlers ─────────────────────────────────────────────────────────────────
+
+func gitStatusHandler(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	status, err := igit.Status(stringArg(req, "repo_path"))
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	return mcp.NewToolResultText(status), nil
+}
+
+func gitCommitPushHandler(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	repoPath := stringArg(req, "repo_path")
+
+	host, err := igit.RemoteHost(repoPath)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("could not determine remote host: %v", err)), nil
+	}
+	username, token, errResult := resolveCreds(host)
+	if errResult != nil {
+		return errResult, nil
+	}
+
+	ctx, cancel := gitOpContext(ctx)
+	defer cancel()
+	result, err := igit.CommitAndPush(ctx, repoPath, stringArg(req, "message"), username, token)
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	return mcp.NewToolResultText(result), nil
+}
+
+func gitPullHandler(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	repoPath := stringArg(req, "repo_path")
+
+	host, err := igit.RemoteHost(repoPath)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("could not determine remote host: %v", err)), nil
+	}
+	username, token, errResult := resolveCreds(host)
+	if errResult != nil {
+		return errResult, nil
+	}
+
+	ctx, cancel := gitOpContext(ctx)
+	defer cancel()
+	result, err := igit.Pull(ctx, repoPath, username, token)
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	return mcp.NewToolResultText(result), nil
+}
+
+func gitCloneHandler(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	remoteURL := stringArg(req, "remote_url")
+
+	host, err := igit.RequireHTTPS(remoteURL)
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	username, token, errResult := resolveCreds(host)
+	if errResult != nil {
+		return errResult, nil
+	}
+
+	ctx, cancel := gitOpContext(ctx)
+	defer cancel()
+	result, err := igit.Clone(ctx, remoteURL, stringArg(req, "local_path"), username, token)
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	return mcp.NewToolResultText(result), nil
+}
+
+func gitInitHandler(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	remoteURL := stringArg(req, "remote_url")
+
+	host, err := igit.RequireHTTPS(remoteURL)
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	username, token, errResult := resolveCreds(host)
+	if errResult != nil {
+		return errResult, nil
+	}
+
+	ctx, cancel := gitOpContext(ctx)
+	defer cancel()
+	result, err := igit.InitAndPush(ctx, stringArg(req, "local_path"), remoteURL, stringArg(req, "message"), username, token)
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	return mcp.NewToolResultText(result), nil
+}
+
+func getAuthStatusHandler(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	host := stringArg(req, "host")
+	backend := keychain.Backend()
+	username, _, err := keychain.GetCredentials(host)
+	if err != nil {
+		if errors.Is(err, keychain.ErrNotFound) {
+			return mcp.NewToolResultText(fmt.Sprintf("no credentials stored for %s (backend: %s)", host, backend)), nil
+		}
+		return mcp.NewToolResultError(fmt.Sprintf("could not read credentials for %s (backend: %s): %v", host, backend, err)), nil
+	}
+	return mcp.NewToolResultText(fmt.Sprintf("credentials found for %s (user: %s, backend: %s)", host, username, backend)), nil
+}
+
+func setCredentialsHandler(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	host := stringArg(req, "host")
+	if err := keychain.SetCredentials(host, stringArg(req, "username"), stringArg(req, "token")); err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("failed to store credentials: %v", err)), nil
+	}
+	return mcp.NewToolResultText(fmt.Sprintf("credentials stored for %s (backend: %s)", host, keychain.Backend())), nil
+}
+
+func deleteCredentialsHandler(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	host := stringArg(req, "host")
+	if err := keychain.DeleteCredentials(host); err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("failed to delete credentials: %v", err)), nil
+	}
+	return mcp.NewToolResultText(fmt.Sprintf("credentials removed for %s", host)), nil
+}
