@@ -77,7 +77,21 @@ guesses.
   Developer **is enabled** on Lucas's Origin-managed account; (b) local servers run
   **host-side** (strong evidence: the Snyk extension holds its token in **env vars**, and
   Chrome control drives the *local* browser) -> **host network, reaches git hosts**.
-  Only remaining caveat: reliability (open Cowork local-MCP bugs).
+  Caveats: reliability (open Cowork local-MCP bugs), and **corporate app-control**
+  (next bullet).
+- ⛔ **(2026-06-12) Corporate app-control blocks unsigned binaries host-side.** Ground
+  truth from the work PC: Origin Secure Access (OSA) **blocked a locally cross-built
+  `cortex-git-server.exe`** the moment it was executed on the Windows host (run from a
+  `\\wsl.localhost\...` path; "blocked to protect this device", no publisher). The exe
+  never ran - WSL interop returned exit 0 with empty output, so test for *output*, not
+  just exit code. Implications: host-side local MCP (sub-task (ii)) is gated on OSA for
+  managed machines even with a goreleaser release, because release binaries are
+  **unsigned** (the cosign item is artifact verification, not Windows Authenticode).
+  Snyk's extension passes because it ships signed by a known publisher. The **WSL-side
+  Linux binary is unaffected** - CLI Cortex keeps working. Plan: managed machines use
+  host-side sync from WSL (the planned fallback); validate the Snyk-pattern wire-up on
+  an unmanaged personal machine; Authenticode signing (see Publishing) + a one-off IT
+  publisher-trust request is the real fix for corporate hosts.
 
 **Viable Cowork path (no binary):**
 - Deliver the **skills** to Cowork (its plugin install / a `.plugin` bundle).
@@ -108,7 +122,9 @@ host-side sync (CLI / scheduled `git pull`), or a hosted HTTP MCP.
 read creds from env** (`CORTEX_GIT_HOST` / `_USERNAME` / `_TOKEN`) so a local-MCP config
 can inject the PAT via env, Snyk-style - env takes precedence over the store, scoped to
 the named host only (`cmd/server/envcreds.go`); (ii) wire `cortex-git` into Cowork as a local MCP server (Settings >
-Developer -> Windows `.exe` + env vars) and connect a git-clone folder for the profile;
+Developer -> Windows `.exe` + env vars) and connect a git-clone folder for the profile -
+**validate on an unmanaged personal machine first**; on the work PC this is gated on
+OSA / a signed binary (see the ⛔ finding above);
 (iii) deliver the skills to Cowork; (iv) *(optional)* a `.mcpb` for one-click install - **pack a clean staging dir
 (`manifest.json` + `icon.png` + the single binary only), NOT the repo** (Snyk's shipped
 `.mcpb` bundled `.circleci` / `.vscode` / `node_modules` - don't repeat that);
@@ -139,6 +155,18 @@ wrapper. Add a `tools[]` block for the 8 `cortex-git` tools.
       verified end-to-end install + real-host sync test.
 - [ ] *(Optional)* cosign-sign release artifacts and verify the signature in the
       launcher, on top of the existing SHA-256 check.
+- [ ] **Authenticode-sign the Windows release binary** - required for corporate
+      app-control hosts (see the OSA finding under `## Cowork support`). Options
+      researched 2026-06-12: **SignPath Foundation** (free for OSS, CI-native via
+      GitHub Actions, publisher shows "SignPath Foundation", manual approval per
+      release) is the front-runner; **Certum Open Source** (~EUR 69 + VAT first year
+      incl. smartcard, ~EUR 30/yr renewal, own-name publisher, local signing only);
+      **SSL.com IV + eSigner** (~USD 129/yr + USD 20/mo, own-name, CI-automatable);
+      **Azure Artifact Signing** (USD 9.99/mo, best CI story, but **individuals in
+      Australia not eligible** as of 2026-05 - re-check periodically). Notes: EV buys
+      nothing for SmartScreen since 2024-03; new signed publishers still accumulate
+      SmartScreen reputation over time; cert validity is capped at ~458 days since
+      2026-03 so everything is effectively a subscription.
 - [ ] *(Optional)* Submit to the `anthropics/claude-plugins-community` marketplace
       via `clau.de/plugin-directory-submission`.
 
