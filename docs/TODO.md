@@ -7,8 +7,10 @@ The plugin has been verified end-to-end, including a real first-run setup agains
 private GitLab profile repo.
 
 **Next up:**
-- **v0.1.1** (skill-only): the two Setup / onboarding UX wins below - import an existing
-  `CLAUDE.md`; a clean "no persona" path. No Go change, low risk.
+- **v0.1.1 (done 2026-06-12, pending tag):** import an existing `CLAUDE.md` during
+  `/setup` (Section 0); "no persona" is now a first-class choice. Skill-only, no Go
+  change. Tag `v0.1.1` when ready (skills ship from the repo; `bin/VERSION` stays
+  `v0.1.0` - the binary is unchanged).
 - **Cowork support (investigated + viable):** Cortex can run fully in the Claude Desktop /
   Cowork app - `cortex-git` works as a local MCP server (the Snyk model). The
   **env-credentials server change** (read `CORTEX_GIT_TOKEN` / `_HOST` / `_USERNAME`
@@ -21,16 +23,18 @@ Open items, grouped by theme. Each becomes a branch + PR.
 
 ## Setup / onboarding UX
 
-- [ ] **Import an existing setup.** Detect an existing `CLAUDE.md` (`~/.claude`, the
-      Cowork Documents folder) during `/setup` and offer to import and adapt it into
-      the profile, instead of only the cold questionnaire. Biggest win for users who
-      already have a profile and persona.
+- [x] **(done 2026-06-12, v0.1.1) Import an existing setup.** `/setup` Section 0
+      detects an existing `CLAUDE.md` (`~/.claude`, the Cowork Documents folder),
+      offers import-and-adapt vs start-fresh, plays back what it found for
+      confirmation, only asks the missing sections, and offers to bring existing
+      memory files along.
 - [ ] **Deeper guided persona builder.** When a user wants a full character, branch
       into a richer guided interview (name, background, personality, values, voice)
-      rather than the current handful of questions.
-- [ ] **Clean "no persona" path.** Make "just preferences, no character" an obvious
-      first-class choice in the persona section for the many users who will not want
-      a named persona.
+      rather than the current handful of questions. (v0.1.1 added a light version -
+      "develop the character together" - this item is the full treatment.)
+- [x] **(done 2026-06-12, v0.1.1) Clean "no persona" path.** Persona section now
+      opens with three equal options; "no persona" generates no Persona section at
+      all (no placeholder heading).
 - [ ] **Memory path resolution on Claude Code CLI.** When `CLAUDE.md` is placed at
       `~/.claude/CLAUDE.md`, the relative `memory/` reference should resolve to the
       profile repo regardless of working directory. `/setup` and `/restore-profile`
