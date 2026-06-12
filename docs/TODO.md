@@ -153,10 +153,27 @@ wrapper. Add a `tools[]` block for the 8 `cortex-git` tools.
       `${CLAUDE_PLUGIN_DATA}`), `SessionStart` warm hook, `marketplace.json`,
       `plugin.json` polish, the goreleaser release pipeline (`checksums.txt`), and a
       verified end-to-end install + real-host sync test.
+- [x] **(2026-06-12) Launcher distribution model re-validated** against current plugin
+      docs (`code.claude.com/docs/en/plugins.md`): download-on-first-run into
+      `${CLAUDE_PLUGIN_DATA}` (persists across updates, deleted on last uninstall
+      unless `--keep-data`) + SHA-256 verify + `SessionStart` prefetch **remains the
+      documented pattern** - no first-class platform-binary mechanism for plugins
+      exists as of v2.1.173, and recent changelogs even improved tolerance of
+      endpoint-security scanning delaying new binaries. Keep as-is for v0.2.0;
+      `.mcpb` `platform_overrides` stays Desktop/Cowork-only.
+- [ ] *(Small)* consider an explicit `startupTimeout` on the `cortex-git` entry in
+      `.mcp.json` - it is a documented MCP server field; verify the current default
+      first so a first-run download is not made worse by a too-tight explicit value
+      (prefetch usually hides this, but not on hook-disabled installs).
 - [ ] *(Optional)* cosign-sign release artifacts and verify the signature in the
       launcher, on top of the existing SHA-256 check.
-- [ ] **Authenticode-sign the Windows release binary** - required for corporate
-      app-control hosts (see the OSA finding under `## Cowork support`). Options
+- [ ] **Authenticode-sign the Windows release binary** - **target: v0.3** (pull
+      forward if it blocks the Cowork wire-up). Required for corporate app-control
+      hosts (see the OSA finding under `## Cowork support`). Plan: apply to SignPath
+      Foundation (juried application, project owner submits), then restructure the
+      release job so the `.exe` is signed *before* `checksums.txt` is computed -
+      signing changes the binary bytes, and the launcher's SHA-256 check is
+      fail-closed. Options
       researched 2026-06-12: **SignPath Foundation** (free for OSS, CI-native via
       GitHub Actions, publisher shows "SignPath Foundation", manual approval per
       release) is the front-runner; **Certum Open Source** (~EUR 69 + VAT first year
