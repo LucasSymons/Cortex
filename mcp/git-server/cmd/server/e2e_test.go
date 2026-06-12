@@ -43,11 +43,13 @@ func TestE2ESyncRoundTrip(t *testing.T) {
 	bin := buildServer(t)
 	cfgDir := t.TempDir()
 
-	// The subprocess trusts the self-signed cert via SSL_CERT_FILE and writes
-	// its credential store under an isolated XDG_CONFIG_HOME.
+	// The subprocess trusts the self-signed cert via SSL_CERT_FILE and pins its
+	// credential store to an isolated dir via CORTEX_CONFIG_DIR, which forces
+	// the file backend on every platform (XDG_CONFIG_HOME isolation only worked
+	// on Linux, and a usable OS keychain would have won anywhere else).
 	c, err := client.NewStdioMCPClient(bin, []string{
 		"SSL_CERT_FILE=" + caFile,
-		"XDG_CONFIG_HOME=" + cfgDir,
+		"CORTEX_CONFIG_DIR=" + cfgDir,
 	})
 	if err != nil {
 		t.Fatalf("starting stdio client: %v", err)
