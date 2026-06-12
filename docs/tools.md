@@ -4,11 +4,23 @@ The `cortex-git` MCP server exposes the tools below over stdio. Skills call
 these; you normally don't invoke them directly.
 
 **Credential resolution.** Every tool that touches a remote resolves the git
-host and looks up a stored PAT, then authenticates over HTTPS Basic auth
+host and looks up a PAT, then authenticates over HTTPS Basic auth
 (`username` + token). The host is taken from the repo's `origin` remote
 (`git_commit_push`, `git_pull`) or parsed from the supplied URL (`git_clone`,
-`git_init`). If no credentials are stored for that host, the tool returns
-`no credentials found for <host> - run set_credentials first`.
+`git_init`). Credentials come from, in order:
+
+1. **Environment variables** - `CORTEX_GIT_HOST`, `CORTEX_GIT_TOKEN`, and
+   optionally `CORTEX_GIT_USERNAME` (defaults to `git`). Set all of them in the
+   server's environment (a Cowork local-MCP config, a `.mcpb` `user_config`,
+   CI) and they take precedence over the store - but only for the named host:
+   the token is never offered to any other host. A token without
+   `CORTEX_GIT_HOST` is ignored with a warning on stderr.
+2. **The credential store** - OS keychain, or the encrypted-file fallback on
+   headless platforms, managed via `set_credentials` / `delete_credentials`.
+
+If neither yields credentials for the host, the tool returns
+`no credentials found for <host> - run set_credentials first, or set
+CORTEX_GIT_HOST/CORTEX_GIT_TOKEN in the server environment`.
 
 See [credential storage](../SECURITY.md#credential-storage) for where tokens live.
 
@@ -90,14 +102,17 @@ repo/remote). **Returns:** `initialised <path>, pushed <hash> to <url> (branch m
 
 ## `get_auth_status`
 
-Report whether a PAT is stored for a host, and which backend is active.
+Report whether a PAT is available for a host, and where it comes from.
 
 | Arg | Required | Description |
 |---|---|---|
 | `host` | yes | Git host (e.g. `gitlab.com`) |
 
-**Returns:** `credentials found for <host> (user: <u>, backend: <keychain|file>)`
-or `no credentials stored for <host> (backend: <...>)`. Never errors.
+**Returns:** `credentials found for <host> (user: <u>, source: env)` when the
+`CORTEX_GIT_*` environment variables cover the host, otherwise
+`credentials found for <host> (user: <u>, backend: <keychain|file>)`
+or `no credentials stored for <host> (backend: <...>)`. Never errors, and never
+echoes the token.
 
 ## `set_credentials`
 
@@ -110,7 +125,9 @@ encrypted-file fallback on headless platforms).
 | `username` | yes | Git username |
 | `token` | yes | Personal Access Token (repo write scope) |
 
-**Returns:** `credentials stored for <host> (backend: <keychain|file>)`.
+**Returns:** `credentials stored for <host> (backend: <keychain|file>)`, with a
+note appended when a `CORTEX_GIT_TOKEN` environment override is active for the
+host (the environment takes precedence over the store).
 **Security note:** the token is passed as a tool argument, so it passes through
 the model context/transcript - see [SECURITY.md](../SECURITY.md#pat-handling).
 
@@ -122,5 +139,7 @@ Remove the stored PAT for a host, e.g. to rotate a token.
 |---|---|---|
 | `host` | yes | Git host (e.g. `gitlab.com`) |
 
-**Returns:** `credentials removed for <host>`. Idempotent - succeeds even if no
-credentials were stored for the host.
+**Returns:** `credentials removed for <host>`, with a note appended when a
+`CORTEX_GIT_TOKEN` environment override remains active for the host (deleting
+from the store does not clear the environment). Idempotent - succeeds even if
+no credentials were stored for the host.

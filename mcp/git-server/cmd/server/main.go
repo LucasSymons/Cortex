@@ -83,7 +83,7 @@ func registerTools(s *server.MCPServer) {
 
 	// get_auth_status - check if credentials are configured
 	s.AddTool(mcp.NewTool("get_auth_status",
-		mcp.WithDescription("Check whether a PAT is stored for the given host, and report the active credential backend"),
+		mcp.WithDescription("Check whether a PAT is available for the given host, and report its source: the environment (CORTEX_GIT_* variables) or the keychain/file credential store"),
 		mcp.WithString("host", mcp.Required(), mcp.Description("Git host (e.g. gitlab.com, github.com)")),
 	), getAuthStatusHandler)
 
@@ -141,16 +141,21 @@ func stringArg(req mcp.CallToolRequest, name string) string {
 	return v
 }
 
-// resolveCreds looks up stored credentials for host. If none are found it
-// returns a ready-to-return MCP error result; callers return it as-is. A
-// backend failure (locked keyring, decryption error) is surfaced verbatim
-// rather than being misreported as a missing PAT.
+// resolveCreds looks up credentials for host: environment-injected
+// credentials (CORTEX_GIT_*, see envcreds.go) take precedence, then the
+// credential store. If none are found it returns a ready-to-return MCP error
+// result; callers return it as-is. A backend failure (locked keyring,
+// decryption error) is surfaced verbatim rather than being misreported as a
+// missing PAT.
 func resolveCreds(host string) (username, token string, errResult *mcp.CallToolResult) {
+	if username, token, ok := envCredentials(host); ok {
+		return username, token, nil
+	}
 	username, token, err := keychain.GetCredentials(host)
 	if err != nil {
 		if errors.Is(err, keychain.ErrNotFound) {
 			return "", "", mcp.NewToolResultError(
-				fmt.Sprintf("no credentials found for %s - run set_credentials first", host))
+				fmt.Sprintf("no credentials found for %s - run set_credentials first, or set CORTEX_GIT_HOST/CORTEX_GIT_TOKEN in the server environment", host))
 		}
 		return "", "", mcp.NewToolResultError(
 			fmt.Sprintf("could not read credentials for %s: %v", host, err))
@@ -254,6 +259,9 @@ func gitInitHandler(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTool
 
 func getAuthStatusHandler(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	host := stringArg(req, "host")
+	if username, _, ok := envCredentials(host); ok {
+		return mcp.NewToolResultText(fmt.Sprintf("credentials found for %s (user: %s, source: env)", host, username)), nil
+	}
 	backend := keychain.Backend()
 	username, _, err := keychain.GetCredentials(host)
 	if err != nil {
@@ -270,7 +278,11 @@ func setCredentialsHandler(ctx context.Context, req mcp.CallToolRequest) (*mcp.C
 	if err := keychain.SetCredentials(host, stringArg(req, "username"), stringArg(req, "token")); err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("failed to store credentials: %v", err)), nil
 	}
-	return mcp.NewToolResultText(fmt.Sprintf("credentials stored for %s (backend: %s)", host, keychain.Backend())), nil
+	msg := fmt.Sprintf("credentials stored for %s (backend: %s)", host, keychain.Backend())
+	if _, _, ok := envCredentials(host); ok {
+		msg += " - note: CORTEX_GIT_TOKEN is set in the server environment and takes precedence for this host"
+	}
+	return mcp.NewToolResultText(msg), nil
 }
 
 func deleteCredentialsHandler(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -278,5 +290,9 @@ func deleteCredentialsHandler(ctx context.Context, req mcp.CallToolRequest) (*mc
 	if err := keychain.DeleteCredentials(host); err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("failed to delete credentials: %v", err)), nil
 	}
-	return mcp.NewToolResultText(fmt.Sprintf("credentials removed for %s", host)), nil
+	msg := fmt.Sprintf("credentials removed for %s", host)
+	if _, _, ok := envCredentials(host); ok {
+		msg += " - note: CORTEX_GIT_TOKEN is still set in the server environment and remains active for this host"
+	}
+	return mcp.NewToolResultText(msg), nil
 }

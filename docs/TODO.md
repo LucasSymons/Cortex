@@ -10,10 +10,10 @@ private GitLab profile repo.
 - **v0.1.1** (skill-only): the two Setup / onboarding UX wins below - import an existing
   `CLAUDE.md`; a clean "no persona" path. No Go change, low risk.
 - **Cowork support (investigated + viable):** Cortex can run fully in the Claude Desktop /
-  Cowork app - `cortex-git` works as a local MCP server (the Snyk model). Next build
-  (**v0.2.0**) = a small **env-credentials server change** (read `CORTEX_GIT_TOKEN` /
-  `_HOST` / `_USERNAME` from env) -> manual Cowork wire-up -> an optional `.mcpb`
-  one-click bundle. See `## Cowork support`.
+  Cowork app - `cortex-git` works as a local MCP server (the Snyk model). The
+  **env-credentials server change** (read `CORTEX_GIT_TOKEN` / `_HOST` / `_USERNAME`
+  from env) **landed 2026-06-12** - next for **v0.2.0**: manual Cowork wire-up -> an
+  optional `.mcpb` one-click bundle. See `## Cowork support`.
 - **Community marketplace** submission still queued (manual,
   `clau.de/plugin-directory-submission`).
 
@@ -104,10 +104,10 @@ host-side sync (CLI / scheduled `git pull`), or a hosted HTTP MCP.
   `platform_overrides` + `user_config` for the PAT, if we ever pursue it.)
 - **Browser / mobile:** out (no local runtime).
 
-**Sub-tasks for Cowork (priority order):** (i) **server change - read creds from env**
-(`CORTEX_GIT_HOST` / `_USERNAME` / `_TOKEN`) so a local-MCP config can inject the PAT via
-env, Snyk-style - the key enabler for a clean Cowork wire-up *and* the `.mcpb`
-`user_config`; (ii) wire `cortex-git` into Cowork as a local MCP server (Settings >
+**Sub-tasks for Cowork (priority order):** (i) ✅ **(done 2026-06-12) server change -
+read creds from env** (`CORTEX_GIT_HOST` / `_USERNAME` / `_TOKEN`) so a local-MCP config
+can inject the PAT via env, Snyk-style - env takes precedence over the store, scoped to
+the named host only (`cmd/server/envcreds.go`); (ii) wire `cortex-git` into Cowork as a local MCP server (Settings >
 Developer -> Windows `.exe` + env vars) and connect a git-clone folder for the profile;
 (iii) deliver the skills to Cowork; (iv) *(optional)* a `.mcpb` for one-click install - **pack a clean staging dir
 (`manifest.json` + `icon.png` + the single binary only), NOT the repo** (Snyk's shipped
