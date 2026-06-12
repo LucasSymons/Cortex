@@ -1,7 +1,10 @@
-.PHONY: fmt validate build build-all clean hooks-install release-dry-run licenses e2e
+.PHONY: fmt lint validate build build-all clean hooks-install release-dry-run licenses e2e
 
 fmt:
 	cd mcp/git-server && make fmt
+
+lint:
+	cd mcp/git-server && make lint
 
 validate:
 	cd mcp/git-server && make validate

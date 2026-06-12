@@ -41,7 +41,7 @@ func Status(repoPath string) (string, error) {
 	}
 	var buf bytes.Buffer
 	for path, s := range status {
-		buf.WriteString(fmt.Sprintf("%c%c %s\n", s.Staging, s.Worktree, path))
+		fmt.Fprintf(&buf, "%c%c %s\n", s.Staging, s.Worktree, path)
 	}
 	return buf.String(), nil
 }
@@ -99,7 +99,7 @@ func CommitAndPush(ctx context.Context, repoPath, message, username, token strin
 	}
 
 	auth := &http.BasicAuth{Username: username, Password: token}
-	if err := repo.PushContext(ctx, &gogit.PushOptions{Auth: auth}); err != nil && err != gogit.NoErrAlreadyUpToDate {
+	if err := repo.PushContext(ctx, &gogit.PushOptions{Auth: auth}); err != nil && !errors.Is(err, gogit.NoErrAlreadyUpToDate) {
 		return "", fmt.Errorf("pushing: %w", err)
 	}
 
@@ -124,7 +124,7 @@ func Pull(ctx context.Context, repoPath, username, token string) (string, error)
 		Auth:  auth,
 		Force: true, // last-write-wins: force fast-forward on diverged histories
 	})
-	if err == gogit.NoErrAlreadyUpToDate {
+	if errors.Is(err, gogit.NoErrAlreadyUpToDate) {
 		return "already up to date", nil
 	}
 	if err != nil {
@@ -214,7 +214,7 @@ func InitAndPush(ctx context.Context, localPath, remoteURL, message, username, t
 	if err := repo.PushContext(ctx, &gogit.PushOptions{
 		Auth:     auth,
 		RefSpecs: []config.RefSpec{refSpec},
-	}); err != nil && err != gogit.NoErrAlreadyUpToDate {
+	}); err != nil && !errors.Is(err, gogit.NoErrAlreadyUpToDate) {
 		return "", fmt.Errorf("pushing initial commit: %w", err)
 	}
 
