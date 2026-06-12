@@ -195,6 +195,11 @@ wrapper. Add a `tools[]` block for the 8 `cortex-git` tools.
 
 ## Enhancements (later)
 
+- [ ] **Migrate `mcp-go` 0.18 -> 0.5x.** Dependabot's grouped bump (old PR #2, closed)
+      failed CI across the board - the 0.5x API is a breaking change for the whole
+      server surface (tool registration, request argument access). Dependabot now
+      ignores the dependency until this lands (`.github/dependabot.yml`); plan it as
+      its own branch with the full test suite as the safety net.
 - [ ] **Passphrase mode** for the encrypted-file credential fallback, for real at-rest
       protection on headless boxes (currently machine-bound obfuscation).
 - [ ] **Real `git_diff`** - a content-level change preview (the stub was removed as it
