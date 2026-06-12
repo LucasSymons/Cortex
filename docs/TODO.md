@@ -201,9 +201,13 @@ wrapper. Add a `tools[]` block for the 8 `cortex-git` tools.
       duplicated `git_status`).
 - [ ] **Better pull conflict strategy** than last-write-wins (`Force: true`).
 - [ ] **`golangci-lint`** config + CI job for stricter static analysis beyond `go vet`.
-- [ ] **`CORTEX_CONFIG_DIR` / force-file-backend override** - pin the encrypted-file
-      backend at a given dir regardless of whether an OS keychain is present. Enables
-      deterministic, fully isolated E2E on every platform and a clean headless override.
+- [x] **(done 2026-06-12) `CORTEX_CONFIG_DIR` / force-file-backend override** - when
+      set, the encrypted-file backend is pinned at `$CORTEX_CONFIG_DIR/credentials.enc`
+      and the keychain probe never runs (`keychain.selectStore`). Read once at first
+      use (selection is process-cached). Existing tests keep `XDG_CONFIG_HOME`
+      isolation; new E2E work should prefer `CORTEX_CONFIG_DIR` - it is deterministic
+      on macOS too, where `XDG_CONFIG_HOME` is ignored and a desktop keyring would
+      otherwise win.
 
 ## Code-review leftovers (optional)
 

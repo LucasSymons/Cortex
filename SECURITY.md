@@ -31,6 +31,12 @@ Selection works by probing the OS keychain once: a working-but-empty keychain
 selects the keychain backend; a "Secret Service unavailable" error falls back to
 the file. `get_auth_status` / `set_credentials` report which backend is active.
 
+Setting `CORTEX_CONFIG_DIR` in the server's environment overrides selection
+entirely: the encrypted-file backend is pinned at
+`$CORTEX_CONFIG_DIR/credentials.enc` and the keychain probe never runs, on every
+platform. Intended for isolated E2E test runs and headless deployments that want
+a deterministic store location; the file-backend security trade-offs above apply.
+
 ### Environment-injected credentials
 
 The PAT can instead be supplied via `CORTEX_GIT_HOST` / `CORTEX_GIT_TOKEN` /

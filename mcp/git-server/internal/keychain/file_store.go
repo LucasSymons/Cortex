@@ -44,6 +44,14 @@ func newFileStore() *fileStore {
 	return &fileStore{path: fileStorePath()}
 }
 
+// newFileStoreAt pins the encrypted file directly inside dir, bypassing the
+// default user-config-dir resolution. Used by the CORTEX_CONFIG_DIR override
+// (see selectStore) so tests and headless deployments control the exact
+// location.
+func newFileStoreAt(dir string) *fileStore {
+	return &fileStore{path: filepath.Join(dir, "credentials.enc")}
+}
+
 func (*fileStore) kind() string { return "file" }
 
 // fileStorePath returns the location of the encrypted credentials file,

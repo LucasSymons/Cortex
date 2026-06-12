@@ -16,6 +16,8 @@ package keychain
 
 import (
 	"errors"
+	"os"
+	"strings"
 	"sync"
 
 	"github.com/zalando/go-keyring"
@@ -59,9 +61,17 @@ func backend() store {
 	return activeStore
 }
 
-// selectStore picks the keychain backend when a usable OS keychain is present,
-// and otherwise falls back to the encrypted file backend.
+// selectStore picks the credential backend. CORTEX_CONFIG_DIR, when set, pins
+// the encrypted-file backend at that directory regardless of whether an OS
+// keychain is present - a deterministic override for E2E tests and headless
+// deployments (the OS-keychain probe never runs, so selection is identical on
+// every platform). Otherwise the OS keychain is preferred when usable, with
+// the encrypted file backend as the fallback. Selection is cached for the
+// process lifetime (see backend), so the variable is read once at first use.
 func selectStore() store {
+	if dir := strings.TrimSpace(os.Getenv("CORTEX_CONFIG_DIR")); dir != "" {
+		return newFileStoreAt(dir)
+	}
 	if keyringAvailable() {
 		return keyringStore{}
 	}
