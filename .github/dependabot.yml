@@ -12,6 +12,11 @@ updates:
     groups:
       go-dependencies:
         patterns: ["*"]
+    ignore:
+      # mcp-go 0.18 -> 0.5x is a breaking API migration, tracked in
+      # docs/TODO.md - remove this once the migration lands. Version-update
+      # ignores do not suppress Dependabot security updates.
+      - dependency-name: github.com/mark3labs/mcp-go
 
   # GitHub Actions used by the workflows (keeps action versions current,
   # including the Node runtime bumps).
