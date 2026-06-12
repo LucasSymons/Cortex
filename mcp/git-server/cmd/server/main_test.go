@@ -20,8 +20,9 @@ import (
 // TestMain routes every credential operation in this package through
 // go-keyring's in-memory mock, so the suite never touches a real OS keychain or
 // the on-disk encrypted store. The subprocess stdio test launches a separately
-// compiled binary that cannot see this mock; it is isolated via XDG_CONFIG_HOME
-// instead (see TestStdioServerSmoke).
+// compiled binary that cannot see this mock; it is isolated via
+// CORTEX_CONFIG_DIR instead, which pins the file backend deterministically on
+// every platform (see TestStdioServerSmoke).
 func TestMain(m *testing.M) {
 	keyring.MockInit()
 	os.Exit(m.Run())
@@ -244,10 +245,11 @@ func TestStdioServerSmoke(t *testing.T) {
 	}
 	bin := buildServer(t)
 
-	// Isolate the encrypted-file credential store under a temp dir so the
-	// subprocess writes nothing to the developer's real config location.
+	// Pin the credential store to a temp dir via CORTEX_CONFIG_DIR so the
+	// subprocess writes nothing to the developer's real config location or OS
+	// keychain - the override forces the file backend on every platform.
 	cfgDir := t.TempDir()
-	c, err := client.NewStdioMCPClient(bin, []string{"XDG_CONFIG_HOME=" + cfgDir})
+	c, err := client.NewStdioMCPClient(bin, []string{"CORTEX_CONFIG_DIR=" + cfgDir})
 	if err != nil {
 		t.Fatalf("starting stdio client: %v", err)
 	}
