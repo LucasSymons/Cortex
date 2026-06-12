@@ -148,12 +148,26 @@ func (f *fileStore) save(creds map[string]credEntry) error {
 		return fmt.Errorf("creating credentials dir: %w", err)
 	}
 
-	tmp := f.path + ".tmp"
-	if err := os.WriteFile(tmp, blob, 0o600); err != nil {
+	// A unique temp file (0600 by default) rather than a fixed path+".tmp": the
+	// in-process mutex does not guard against another cortex-git process saving
+	// concurrently, and two writers sharing one temp path could rename a
+	// half-written blob into place.
+	tmp, err := os.CreateTemp(dir, "credentials-*.tmp")
+	if err != nil {
+		return fmt.Errorf("creating temp credentials file: %w", err)
+	}
+	tmpPath := tmp.Name()
+	if _, err := tmp.Write(blob); err != nil {
+		_ = tmp.Close()
+		_ = os.Remove(tmpPath)
 		return fmt.Errorf("writing credentials file: %w", err)
 	}
-	if err := os.Rename(tmp, f.path); err != nil {
-		_ = os.Remove(tmp) // best-effort cleanup; the rename error is what matters
+	if err := tmp.Close(); err != nil {
+		_ = os.Remove(tmpPath)
+		return fmt.Errorf("closing credentials file: %w", err)
+	}
+	if err := os.Rename(tmpPath, f.path); err != nil {
+		_ = os.Remove(tmpPath) // best-effort cleanup; the rename error is what matters
 		return fmt.Errorf("finalising credentials file: %w", err)
 	}
 	return nil
@@ -220,7 +234,14 @@ func deriveKey() [32]byte {
 }
 
 // machineID returns a stable per-machine identifier, falling back to the
-// hostname and finally a constant if neither is available.
+// hostname and finally a constant if neither machine-id file is readable.
+//
+// SECURITY NOTE: every input here is non-secret (machine-id files are readable
+// by any local user, hostnames are guessable, and the final constant is public
+// in this source), and the fallbacks are progressively weaker. The derived
+// file-store key therefore provides non-portability and obfuscation, not strong
+// at-rest crypto - see the fileStore doc comment. The planned passphrase mode
+// (docs/TODO.md) is the upgrade path for real at-rest protection.
 func machineID() string {
 	for _, p := range []string{"/etc/machine-id", "/var/lib/dbus/machine-id"} {
 		// #nosec G304 -- p is a fixed internal list of machine-id paths, not user input
