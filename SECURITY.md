@@ -31,6 +31,17 @@ Selection works by probing the OS keychain once: a working-but-empty keychain
 selects the keychain backend; a "Secret Service unavailable" error falls back to
 the file. `get_auth_status` / `set_credentials` report which backend is active.
 
+### Environment-injected credentials
+
+The PAT can instead be supplied via `CORTEX_GIT_HOST` / `CORTEX_GIT_TOKEN` /
+`CORTEX_GIT_USERNAME` in the server's environment, for hosts that manage the
+secret themselves (a Cowork local-MCP config, a `.mcpb` `user_config`, CI).
+Environment credentials take precedence over the store but are scoped to the
+named host only - the token is never offered to any other host, and a token
+without `CORTEX_GIT_HOST` is ignored. The token is then only as protected as
+the environment that holds it: prefer the host platform's secret handling
+(e.g. a `.mcpb` `sensitive` user_config field) over plaintext config files.
+
 ### Encrypted-file fallback
 
 When no OS keychain is available, credentials are written to
