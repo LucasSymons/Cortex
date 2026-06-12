@@ -205,14 +205,11 @@ wrapper. Add a `tools[]` block for the 8 `cortex-git` tools.
 
 ## Code-review leftovers (optional)
 
-- [ ] Note the weakened-key fallback in code: `machineID`
-      (`internal/keychain/file_store.go`) falls back to the hostname and finally a
-      constant when `/etc/machine-id` is absent, deriving the file-store key from
-      non-secret inputs. Add a one-line comment so it isn't mistaken for strong
-      at-rest crypto. (Ties into passphrase mode.)
-- [ ] Unique temp file in the file store: `fileStore.save` writes to a fixed
-      `path + ".tmp"` guarded only by an in-process mutex; use `os.CreateTemp` in the
-      same dir.
+- [x] **(done 2026-06-12)** Note the weakened-key fallback in code: `machineID`
+      (`internal/keychain/file_store.go`) now carries a security note that all key
+      inputs are non-secret and points at passphrase mode as the upgrade path.
+- [x] **(done 2026-06-12)** Unique temp file in the file store: `fileStore.save`
+      uses `os.CreateTemp` in the credentials dir instead of a fixed `path + ".tmp"`.
 
 ## Docs
 
