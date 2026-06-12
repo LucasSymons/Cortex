@@ -165,10 +165,12 @@ wrapper. Add a `tools[]` block for the 8 `cortex-git` tools.
       exists as of v2.1.173, and recent changelogs even improved tolerance of
       endpoint-security scanning delaying new binaries. Keep as-is for v0.2.0;
       `.mcpb` `platform_overrides` stays Desktop/Cowork-only.
-- [ ] *(Small)* consider an explicit `startupTimeout` on the `cortex-git` entry in
-      `.mcp.json` - it is a documented MCP server field; verify the current default
-      first so a first-run download is not made worse by a too-tight explicit value
-      (prefetch usually hides this, but not on hook-disabled installs).
+- [x] **(resolved 2026-06-12 - no action)** `startupTimeout` per-server field: verified
+      against `mcp-configuration.md` that **no such field exists** (an earlier doc check
+      claimed otherwise - it was wrong). The only knobs are the global `MCP_TIMEOUT`
+      env var (startup, all servers) and the per-server `timeout` field (tool
+      execution, not startup). The SessionStart prefetch hook remains the right
+      mitigation for first-run download time; nothing to add to `.mcp.json`.
 - [ ] *(Optional)* cosign-sign release artifacts and verify the signature in the
       launcher, on top of the existing SHA-256 check.
 - [ ] **Authenticode-sign the Windows release binary** - **target: v0.3** (pull
