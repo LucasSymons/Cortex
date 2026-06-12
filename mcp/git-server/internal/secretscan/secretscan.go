@@ -98,7 +98,7 @@ func ScanFiles(root string, paths []string) ([]Finding, error) {
 	if err != nil {
 		return nil, fmt.Errorf("opening scan root %s: %w", root, err)
 	}
-	defer r.Close()
+	defer func() { _ = r.Close() }() // read-only root; close error is immaterial
 
 	var findings []Finding
 	for _, p := range paths {
@@ -137,7 +137,7 @@ func scanFile(root *os.Root, relPath string) ([]Finding, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open %s: %w", relPath, err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }() // read-only file; close error is immaterial
 
 	data, err := io.ReadAll(io.LimitReader(f, maxFileSize))
 	if err != nil {

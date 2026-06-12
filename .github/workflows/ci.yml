@@ -31,6 +31,18 @@ jobs:
           test -z "$out" || { echo "gofmt issues - run 'make fmt':"; echo "$out"; exit 1; }
       - name: go vet
         run: go vet ./...
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v9
+        with:
+          # Keep in step with GOLANGCI_LINT_VERSION in mcp/git-server/Makefile.
+          version: v2.12.2
+          working-directory: mcp/git-server
+      - name: golangci-lint (e2e tag)
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.12.2
+          working-directory: mcp/git-server
+          args: --build-tags e2e
 
   test:
     runs-on: ubuntu-latest

@@ -1,0 +1,43 @@
+# golangci-lint v2 configuration for the cortex-git MCP server.
+#
+# Curated set: the v2 defaults (errcheck, govet, staticcheck, unused,
+# ineffassign) plus linters that catch real classes of bugs in this codebase
+# (error wrapping, copied loop vars, suspicious constructs) and keep the
+# British-English house style honest. gosec is NOT enabled here - it runs as
+# its own CI job (sast) with the same version pinned.
+version: "2"
+
+linters:
+  default: standard
+  enable:
+    - copyloopvar # loop-variable copies that pre-Go1.22 patterns left behind
+    - errorlint # %w wrapping and errors.Is/As misuse
+    - gocritic # opinionated checks for suspicious constructs
+    - intrange # for-range over integers where applicable
+    - misspell # spelling in comments and strings
+    - nolintlint # malformed or unexplained nolint directives
+    - revive # style and correctness, successor to golint
+    - unconvert # redundant type conversions
+    - unparam # unused function parameters
+  settings:
+    misspell:
+      # House style is British English (behaviour, organisation, colour).
+      locale: UK
+      # Upstream API names are American and must not be "corrected" - the MCP
+      # protocol method is Initialize, and matching log/test strings refer to it.
+      ignore-rules:
+        - initialize
+    revive:
+      rules:
+        # Keep revive's defaults but require comments on exported symbols to
+        # actually match the symbol name (the package already documents all
+        # exported API).
+        - name: exported
+  exclusions:
+    rules:
+      # Handler-level tests exercise unhappy paths where return values are
+      # intentionally discarded.
+      - path: _test\.go
+        linters:
+          - errcheck
+          - unparam

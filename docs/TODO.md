@@ -205,7 +205,13 @@ wrapper. Add a `tools[]` block for the 8 `cortex-git` tools.
 - [ ] **Real `git_diff`** - a content-level change preview (the stub was removed as it
       duplicated `git_status`).
 - [ ] **Better pull conflict strategy** than last-write-wins (`Force: true`).
-- [ ] **`golangci-lint`** config + CI job for stricter static analysis beyond `go vet`.
+- [x] **(done 2026-06-12) `golangci-lint`** v2.12.2: curated config at
+      `mcp/git-server/.golangci.yml` (standard set + errorlint, gocritic, revive,
+      misspell locale UK with an `initialize` ignore for the MCP API name, and
+      friends), `make lint` (pinned version, auto-installs via GOPROXY, also lints
+      the e2e build tag) now runs as part of `make validate`, and the CI lint job
+      runs golangci-lint-action@v9. First run caught three real wrapped-error
+      comparison bugs in `internal/git` (fixed with `errors.Is`).
 - [x] **(done 2026-06-12) `CORTEX_CONFIG_DIR` / force-file-backend override** - when
       set, the encrypted-file backend is pinned at `$CORTEX_CONFIG_DIR/credentials.enc`
       and the keychain probe never runs (`keychain.selectStore`). Read once at first
