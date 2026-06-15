@@ -34,9 +34,11 @@ Developers running from a local checkout can build the server with `make build`;
 the launcher prefers a local build when present. See
 [Running from a local checkout](CONTRIBUTING.md#running-from-a-local-checkout).
 
-> **Surface:** these steps are for **Claude Code CLI**. Cowork (the desktop/web app)
-> uses a different runtime - no local MCP binary, and `CLAUDE.md` loads from the
-> connected Documents folder. Cowork support is on the [roadmap](docs/TODO.md#cowork-support).
+> **Surfaces:** the steps above are for **Claude Code CLI**. For the **Claude
+> Desktop app and Cowork**, Cortex ships a `.mcpb` desktop-extension bundle that
+> runs `cortex-git` as a local MCP server, with your PAT supplied through Claude's
+> config UI - see [Cowork / Claude Desktop](docs/usage.md#cowork--claude-desktop-mcpb-bundle).
+> Browser and mobile have no local runtime and are out of scope.
 
 ## Quick start
 

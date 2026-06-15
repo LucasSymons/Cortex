@@ -1,21 +1,22 @@
 # Cortex - roadmap
 
-**Status (2026-06-10):** v0.1.0 is released and publicly installable
+**Status (2026-06-15):** v0.1.0 is released and publicly installable
 (`/plugin marketplace add LucasSymons/Cortex` -> `/plugin install cortex@cortex`).
 GitHub Actions CI, Dependabot, and the goreleaser release pipeline are all green.
-The plugin has been verified end-to-end, including a real first-run setup against a
-private GitLab profile repo.
+**v0.2.0 is prepared on branch `feat/cowork-mcpb-bundle`** (env-credentials + the
+`.mcpb` desktop bundle); it is awaiting a hands-on Cowork test on an unmanaged
+machine before the tag is cut.
 
 **Next up:**
-- **v0.1.1 (done 2026-06-12, pending tag):** import an existing `CLAUDE.md` during
-  `/setup` (Section 0); "no persona" is now a first-class choice. Skill-only, no Go
-  change. Tag `v0.1.1` when ready (skills ship from the repo; `bin/VERSION` stays
-  `v0.1.0` - the binary is unchanged).
-- **Cowork support (investigated + viable):** Cortex can run fully in the Claude Desktop /
-  Cowork app - `cortex-git` works as a local MCP server (the Snyk model). The
-  **env-credentials server change** (read `CORTEX_GIT_TOKEN` / `_HOST` / `_USERNAME`
-  from env) **landed 2026-06-12** - next for **v0.2.0**: manual Cowork wire-up -> an
-  optional `.mcpb` one-click bundle. See `## Cowork support`.
+- **v0.2.0 (prepared, awaiting test + tag):** the **Cowork / Claude Desktop**
+  surface. The env-credentials server change landed 2026-06-12, and the `.mcpb`
+  desktop-extension bundle (manifest + packer + icon + release wiring + CI test)
+  is built. Version is bumped to v0.2.0 across `bin/VERSION`,
+  `.claude-plugin/plugin.json`, and `mcpb/manifest.json`; this **rolls the
+  untagged v0.1.1 skill work** (`/setup` CLAUDE.md import + first-class "no
+  persona") into v0.2.0. Remaining before tagging: a hands-on Cowork test, then
+  Authenticode signing for managed hosts (v0.3, see Publishing). See
+  `## Cowork support`.
 - **Community marketplace** submission still queued (manual,
   `clau.de/plugin-directory-submission`).
 
