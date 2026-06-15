@@ -1,0 +1,35 @@
+name: CodeQL
+
+on:
+  push:
+  pull_request:
+  # Weekly scan so newly-published CodeQL queries run against unchanged code.
+  schedule:
+    - cron: "30 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: analyze (go)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write # publish findings to the Security tab
+      actions: read
+    steps:
+      - uses: actions/checkout@v6
+      # build-mode: none extracts the Go source directly - no build or working
+      # directory to configure, which sidesteps autobuild fumbling the module
+      # that lives under mcp/git-server/.
+      - name: initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: go
+          build-mode: none
+      - name: analyze
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:go"
