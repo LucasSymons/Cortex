@@ -21,14 +21,21 @@ jobs:
       actions: read
     steps:
       - uses: actions/checkout@v6
-      # build-mode: none extracts the Go source directly - no build or working
-      # directory to configure, which sidesteps autobuild fumbling the module
-      # that lives under mcp/git-server/.
+      - uses: actions/setup-go@v6
+        with:
+          go-version: "1.26.4"
+          cache-dependency-path: mcp/git-server/go.sum
+      # Go only supports autobuild or manual extraction. We build manually so
+      # CodeQL traces the compile of the module under mcp/git-server/ (autobuild
+      # fumbles non-root modules).
       - name: initialize CodeQL
         uses: github/codeql-action/init@v3
         with:
           languages: go
-          build-mode: none
+          build-mode: manual
+      - name: build (traced by CodeQL)
+        working-directory: mcp/git-server
+        run: go build ./...
       - name: analyze
         uses: github/codeql-action/analyze@v3
         with:
