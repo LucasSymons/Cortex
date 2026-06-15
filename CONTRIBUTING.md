@@ -116,5 +116,17 @@ docs/design.md               architecture and decision log
 
 ## Releases
 
-Releases are driven by goreleaser + Conventional Commits (semver). Bump the
-`version` in `.claude-plugin/plugin.json` to match the released tag.
+Releases are driven by goreleaser + Conventional Commits (semver). Before
+tagging `vX.Y.Z`, bump the version in **all three** version-bearing files so
+they agree with the tag:
+
+- `.claude-plugin/plugin.json` (`version`, no `v` prefix)
+- `bin/VERSION` (the launcher fetches the binary from this tag's release; keep
+  the `v` prefix)
+- `mcpb/manifest.json` (`version`, no `v` prefix) - the release pipeline
+  **fails closed** if this does not match the tag, so the `.mcpb` bundles can't
+  ship mis-versioned.
+
+Then commit, `git tag -a vX.Y.Z -m ...`, and push the tag. The release workflow
+runs e2e, then goreleaser (binaries + `checksums.txt`), then packs and attaches
+the `.mcpb` desktop-extension bundles (one per target via `make mcpb-all`).
