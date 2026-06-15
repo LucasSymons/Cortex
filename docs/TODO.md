@@ -1,6 +1,7 @@
 # Cortex - roadmap
 
-**Status (2026-06-15):** v0.1.0 is released and publicly installable
+**Status (2026-06-15):** **v0.1.1 is the latest release** (tagged 2026-06-12;
+v0.1.0 before it), publicly installable
 (`/plugin marketplace add LucasSymons/Cortex` -> `/plugin install cortex@cortex`).
 GitHub Actions CI, Dependabot, and the goreleaser release pipeline are all green.
 **v0.2.0 is prepared on branch `feat/cowork-mcpb-bundle`** (env-credentials + the
@@ -9,14 +10,13 @@ machine before the tag is cut.
 
 **Next up:**
 - **v0.2.0 (prepared, awaiting test + tag):** the **Cowork / Claude Desktop**
-  surface. The env-credentials server change landed 2026-06-12, and the `.mcpb`
-  desktop-extension bundle (manifest + packer + icon + release wiring + CI test)
-  is built. Version is bumped to v0.2.0 across `bin/VERSION`,
-  `.claude-plugin/plugin.json`, and `mcpb/manifest.json`; this **rolls the
-  untagged v0.1.1 skill work** (`/setup` CLAUDE.md import + first-class "no
-  persona") into v0.2.0. Remaining before tagging: a hands-on Cowork test, then
-  Authenticode signing for managed hosts (v0.3, see Publishing). See
-  `## Cowork support`.
+  surface, following the released v0.1.1. The env-credentials server change
+  landed 2026-06-12, and the `.mcpb` desktop-extension bundle (manifest + packer
+  + icon + release wiring + CI test) is built. Version is bumped to v0.2.0 across
+  `bin/VERSION` (was `v0.1.0` - v0.1.1 shipped skills only, binary unchanged),
+  `.claude-plugin/plugin.json`, and `mcpb/manifest.json`. Remaining before
+  tagging: a hands-on Cowork test, then Authenticode signing for managed hosts
+  (v0.3, see Publishing). See `## Cowork support`.
 - **Community marketplace** submission still queued (manual,
   `clau.de/plugin-directory-submission`).
 
@@ -144,8 +144,9 @@ modes, manifest parses, bundled binary runs `--version` = 0.2.0. Install docs ad
 `scripts/gen-icon.py`, ships MIT with the repo; manifest `icon` field set); (b) ✅ **release wiring** -
 `release.yml` packs `make mcpb-all` and `gh release upload`s the bundles after goreleaser, with a
 guard that fails the release if `mcpb/manifest.json` version != tag; (d) ✅ **version** - bumped to
-**v0.2.0** across `bin/VERSION` + `.claude-plugin/plugin.json` + `mcpb/manifest.json` (this rolls the
-untagged v0.1.1 skill work up into v0.2.0; release recipe in CONTRIBUTING.md updated); (c) ⛔ **STILL
+**v0.2.0** across `bin/VERSION` + `.claude-plugin/plugin.json` + `mcpb/manifest.json` (v0.2.0 is the
+release after the already-tagged v0.1.1; `bin/VERSION` moves off `v0.1.0` because v0.2.0 is the first
+release with a changed binary, whereas v0.1.1 was skills-only; release recipe in CONTRIBUTING.md updated); (c) ⛔ **STILL
 OPEN (Lucas, v0.3)** - the bundled binary is **unsigned** -> managed-host app-control (OSA) blocks it;
 Authenticode signing is the real fix (see Publishing). **All of (iv) is on branch
 `feat/cowork-mcpb-bundle`, awaiting Lucas's hands-on test on an unmanaged home machine (tonight) before
