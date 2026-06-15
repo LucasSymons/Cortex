@@ -89,6 +89,12 @@ jobs:
 
   sast:
     runs-on: ubuntu-latest
+    # security-events: write lets us publish gosec findings to the Security tab.
+    # contents: read is still needed for checkout (job-level perms replace the
+    # top-level default).
+    permissions:
+      contents: read
+      security-events: write
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-go@v6
@@ -96,9 +102,19 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
           cache-dependency-path: mcp/git-server/go.sum
       - name: gosec
+        # gosec writes the SARIF report, then exits non-zero if it found
+        # anything - so the job stays a hard gate while the report is produced.
         run: |
           go install github.com/securego/gosec/v2/cmd/gosec@v2.27.1
-          "$(go env GOPATH)/bin/gosec" ./...
+          "$(go env GOPATH)/bin/gosec" -fmt sarif -out results.sarif ./...
+      - name: upload gosec SARIF to the Security tab
+        # always(): publish the findings even when the gate above failed, so the
+        # alerts show up in the Security tab rather than only in the run log.
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: mcp/git-server/results.sarif
+          category: gosec
 
   govulncheck:
     runs-on: ubuntu-latest

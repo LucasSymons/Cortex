@@ -1,5 +1,10 @@
 # Cortex
 
+[![CI](https://github.com/LucasSymons/Cortex/actions/workflows/ci.yml/badge.svg)](https://github.com/LucasSymons/Cortex/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/LucasSymons/Cortex?sort=semver)](https://github.com/LucasSymons/Cortex/releases)
+[![Go](https://img.shields.io/badge/Go-1.26%2B-00ADD8?logo=go&logoColor=white)](mcp/git-server/go.mod)
+[![License: MIT](https://img.shields.io/github/license/LucasSymons/Cortex)](LICENSE)
+
 > Your AI profile, synced everywhere.
 
 Cortex is a Claude Code / Cowork plugin that keeps your AI persona, memory, and accumulated knowledge in sync across devices and AI platforms via Git.
