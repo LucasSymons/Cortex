@@ -1,4 +1,4 @@
-.PHONY: fmt lint validate build build-all clean hooks-install release-dry-run licenses e2e mcpb mcpb-all
+.PHONY: fmt lint validate build build-all clean hooks-install release-dry-run licenses e2e mcpb mcpb-all mcpb-check
 
 fmt:
 	cd mcp/git-server && make fmt
@@ -39,6 +39,11 @@ mcpb-all:
 	bash scripts/pack-mcpb.sh darwin amd64
 	bash scripts/pack-mcpb.sh darwin arm64
 	bash scripts/pack-mcpb.sh windows amd64
+
+# Verify the structure of every .mcpb in dist/ (manifest, entry_point, exec
+# bit, icon, tools). Runs in CI; run locally after `make mcpb`/`mcpb-all`.
+mcpb-check:
+	python3 scripts/check-mcpb.py dist
 
 hooks-install:
 	@which lefthook > /dev/null || (echo "Installing lefthook..." && go install github.com/evilmartians/lefthook@latest)

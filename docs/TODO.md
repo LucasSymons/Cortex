@@ -189,6 +189,14 @@ wrapper. Add a `tools[]` block for the 8 `cortex-git` tools.
       mitigation for first-run download time; nothing to add to `.mcp.json`.
 - [ ] *(Optional)* cosign-sign release artifacts and verify the signature in the
       launcher, on top of the existing SHA-256 check.
+- [ ] *(Known gap, low priority)* the binary inside each `.mcpb` is a **separate
+      build** from the goreleaser tar.gz binary (different ldflags, no
+      commit/date) and is **not covered by `checksums.txt`**. Acceptable for now
+      (desktop users install the `.mcpb` directly from the release page, and CI's
+      `mcpb` job structurally verifies every bundle). If we want byte-identical,
+      checksum-covered bundles, have `pack-mcpb.sh` reuse goreleaser's already-built
+      `dist/` binaries instead of rebuilding, and add the `.mcpb` files to the
+      checksum set.
 - [ ] **Authenticode-sign the Windows release binary** - **target: v0.3** (pull
       forward if it blocks the Cowork wire-up). Required for corporate app-control
       hosts (see the OSA finding under `## Cowork support`). Plan: apply to SignPath

@@ -68,6 +68,25 @@ jobs:
       - name: cross-compile all platforms
         run: make build-all
 
+  mcpb:
+    runs-on: ubuntu-latest
+    # The packer and checker run from the repo root.
+    defaults:
+      run:
+        working-directory: ${{ github.workspace }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: mcp/git-server/go.sum
+      - name: pack bundles (host + windows)
+        run: |
+          make mcpb
+          bash scripts/pack-mcpb.sh windows amd64
+      - name: verify bundle structure
+        run: python3 scripts/check-mcpb.py dist
+
   sast:
     runs-on: ubuntu-latest
     steps:

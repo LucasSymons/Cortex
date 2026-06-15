@@ -40,10 +40,10 @@ goarch="${2:-$(go env GOARCH)}"
 # also validates it parses as JSON (fail-closed before we build anything).
 read -r name version < <(python3 -c '
 import json, sys
-with open("'"$manifest"'") as f:
+with open(sys.argv[1]) as f:
     m = json.load(f)
 print(m["name"], m["version"])
-') || { echo "pack-mcpb: $manifest is not valid JSON or is missing name/version" >&2; exit 1; }
+' "$manifest") || { echo "pack-mcpb: $manifest is not valid JSON or is missing name/version" >&2; exit 1; }
 [ -n "$version" ] || { echo "pack-mcpb: manifest .version missing" >&2; exit 1; }
 
 bin_name="cortex-git-server"
@@ -63,6 +63,21 @@ echo "pack-mcpb: building $bin_name for $goos/$goarch (v$version)..." >&2
 cp "$manifest" "$stage/manifest.json"
 # Optional icon: include it only if present so the bundle stays minimal.
 [ -f "mcpb/icon.png" ] && cp "mcpb/icon.png" "$stage/icon.png"
+
+# Each bundle is single-platform, so point server.entry_point at the binary
+# that is actually inside it. platform_overrides covers mcp_config.command but
+# not entry_point, so the Windows bundle would otherwise name a (.exe-less)
+# file it does not contain.
+staged="$stage/manifest.json" bin_name="$bin_name" python3 - <<'PY'
+import json, os
+path = os.environ["staged"]
+with open(path) as f:
+    m = json.load(f)
+m["server"]["entry_point"] = os.environ["bin_name"]
+with open(path, "w") as f:
+    json.dump(m, f, indent=2)
+    f.write("\n")
+PY
 
 mkdir -p "$out_dir"
 out="$out_dir/${name}_${version}_${goos}_${goarch}.mcpb"
@@ -89,8 +104,10 @@ with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
             arc = os.path.relpath(full, stage)
             zi = zipfile.ZipInfo.from_file(full, arc)
             # rwxr-xr-x for the binary, rw-r--r-- for everything else.
+            # 0o100000 = S_IFREG: keep the regular-file flag so unzip tools
+            # honour the permission bits (and the binary's exec bit).
             mode = 0o755 if arc == binname else 0o644
-            zi.external_attr = mode << 16
+            zi.external_attr = (mode | 0o100000) << 16
             with open(full, "rb") as fh:
                 z.writestr(zi, fh.read())
 PY
